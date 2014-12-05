@@ -31,16 +31,22 @@ That's it!
 Run Estelled
 ------------
 
-    estelled <port-number> <path-to-cache-dir>
+    ./estelled
 
 This command starts Estelle daemon. It starts listening TCP port specified by
-`port-number` parameter and blocks your shell line until you hit Ctrl+C.
+`-port` option and blocks your shell line until you hit Ctrl+C.
 
 ### Options
 
 Command line options controls cache strategy, which id how Estelled purges old
 thumbnails. There are two options available:
 
+- `-port=<PORT>` | `-p <PORT>`
+  - Port number that Estelled listens
+  - Default: 1186
+- `-cache-dir=<PATH TO DIR>` | `-d <PATH TO DIR>`
+  - Directory to cache thumbnails
+  - Default: ./estelled-cache
 - `-expires=<MIN>` | `-E <MIN>`
   - Purge thumbnails that have not been accessed for `<MIN>` minutes.
 - `-limit=<SIZE>` | `-L <SIZE>`
