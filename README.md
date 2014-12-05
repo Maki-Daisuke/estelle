@@ -48,10 +48,13 @@ thumbnails. There are two options available:
   - Directory to cache thumbnails
   - Default: ./estelled-cache
 - `-expires=<MIN>` | `-E <MIN>`
-  - Purge thumbnails that have not been accessed for `<MIN>` minutes.
+  - Purge thumbnails that have not been accessed for `<MIN>` minutes. `<MIN>`
+    smaller than or equals to zero means no expiration.
+  - Default: 0
 - `-limit=<SIZE>` | `-L <SIZE>`
   - Keep the size of cache-directory smaller than `<SIZE>` MB, by purging least
-    recent used thumbnails.
+    recent used thumbnails. `<SIZE>` smaller than or equals to zero means no limit.
+  - Default: 0
 
 Get Thumbnail
 -------------
