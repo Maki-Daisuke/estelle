@@ -41,10 +41,10 @@ This command starts Estelle daemon. It starts listening TCP port specified by
 Command line options controls cache strategy, which id how Estelled purges old
 thumbnails. There are two options available:
 
-- -expires=<MIN> | -E <MIN>
-  - Purge thumbnails that have not been accessed for <MIN> minutes.
-- -limit=<SIZE> | -L <SIZE>
-  - Keep the size of cache-directory smaller than <SIZE> MB, by purging least
+- `-expires=<MIN>` | `-E <MIN>`
+  - Purge thumbnails that have not been accessed for `<MIN>` minutes.
+- `-limit=<SIZE>` | `-L <SIZE>`
+  - Keep the size of cache-directory smaller than `<SIZE>` MB, by purging least
     recent used thumbnails.
 
 Get Thumbnail
