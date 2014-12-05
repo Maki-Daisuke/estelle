@@ -72,6 +72,7 @@ path of thumbnail you want.
 - `format`
   - Image format of the output thumbnail
   - One of: `jpg`, `png`, `webp`
+  - Default: `jpg`
 
 Caching
 -------
