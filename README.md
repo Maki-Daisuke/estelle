@@ -61,10 +61,17 @@ Get Thumbnail
 
 Estelle is a HTTP server, so that you can call it by just sending HTTP request. For example:
 
-    curl http://localhost:<port-number>/<absolute-path-to-image-file>?size=400x400
+    curl http://localhost:1186/file/<absolute-path-to-image-file>?size=400x400
 
 This will return a single line of string as the response body, that is the file
 path of thumbnail you want.
+
+You can directly retrieve thumbnail image as HTTP response by requesting /get
+URL:
+
+    curl http://localhost:1186/thumb/<absolute-path-to-image-file>?size=400x300
+
+This will return response body in image/jpeg format containing thumbnail image.
 
 ### Query Parameters
 
