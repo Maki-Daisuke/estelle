@@ -1,6 +1,9 @@
 Estelle - A Thumbnail Daemon
 ============================
 
+_**NOTE: This is experimental and still heavily under development. Most of the
+features documented here is not implemeted yet.**_
+
 Description
 -----------
 
@@ -18,14 +21,24 @@ thumbnails.
 How to Install
 --------------
 
-Estelle is implemented in Go. You need to install Go tools at first.
-Then, clone the repository and build it:
+Since Estelle depends on ImageMagick, install ImageMagick at first. You can
+install ImageMagick with package manager of your OS. For example, you can use
+[Homebrew](http://brew.sh/) on OS X:
 
-    git clone https://github.com/Maki-Daisuke/Estelle.git
-    cd Estelle
+    brew install imagemagick
+
+Estelle is implemented in Go. You need to install [Go tools](http://golang.org/doc/install).
+Then, just get Estelle:
+
+    go get github.com/Maki-Daisuke/estelle/cmd/estelled
+
+Or, you can clone the repository and build it:
+
+    git clone https://github.com/Maki-Daisuke/estelle.git
+    cd estelle/cmd/estelled
     go build
 
-That's it!
+That's it! Now you have a binary called `estelled`.
 
 
 Run Estelled
