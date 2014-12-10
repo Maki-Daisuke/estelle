@@ -63,7 +63,7 @@ func handleFile(res http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		panic(err)
 	}
-	res.Header()["Content-Type"] = []string{"text/plain"}
+	res.Header().Add("Content-Type", "text/plain")
 	res.WriteHeader(200)
 	fmt.Fprint(res, path)
 }
