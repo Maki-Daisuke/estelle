@@ -2,9 +2,11 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strconv"
 
@@ -37,7 +39,7 @@ func main() {
 	router := mux.NewRouter()
 	router.HandleFunc("/file/{path:[^?]+}", handleFile).
 		Methods("GET")
-	router.HandleFunc("/thumb/{path}", handleThumb).
+	router.HandleFunc("/thumb/{path:[^?]+}", handleThumb).
 		Methods("GET")
 
 	n := negroni.New(negroni.NewRecovery(), negroni.NewLogger())
@@ -46,11 +48,7 @@ func main() {
 }
 
 func handleFile(res http.ResponseWriter, req *http.Request) {
-	vars := mux.Vars(req)
-	width, height := parseQuerySize(req.URL.Query()["size"])
-	mode := parseQueryMode(req.URL.Query()["mode"])
-	format := parseQueryFormat(req.URL.Query()["format"])
-	ti, err := NewThumbInfoFromFile("/"+vars["path"], width, height, mode, format)
+	path, err := findOrMakeThumbnail(req)
 	if err != nil {
 		if os.IsNotExist(err) {
 			res.WriteHeader(404)
@@ -59,17 +57,51 @@ func handleFile(res http.ResponseWriter, req *http.Request) {
 		}
 		panic(err)
 	}
-	path, err := cacheDir.Get(ti)
-	if err != nil {
-		panic(err)
-	}
 	res.Header().Add("Content-Type", "text/plain")
 	res.WriteHeader(200)
 	fmt.Fprint(res, path)
 }
 
 func handleThumb(res http.ResponseWriter, req *http.Request) {
-	panic("unimplemeted yet")
+	path, err := findOrMakeThumbnail(req)
+	if err != nil {
+		if os.IsNotExist(err) {
+			res.WriteHeader(404)
+			res.Write([]byte("Not found"))
+			return
+		}
+		panic(err)
+	}
+	file, err := os.Open(path)
+	if err != nil {
+		panic(err)
+	}
+	mimeType := "image/jpeg"
+	switch filepath.Ext(path) {
+	case ".png":
+		mimeType = "image/png"
+	case ".webp":
+		mimeType = "image/webp"
+	}
+	res.Header().Add("Content-Type", mimeType)
+	res.WriteHeader(200)
+	io.Copy(res, file)
+}
+
+func findOrMakeThumbnail(req *http.Request) (string, error) {
+	vars := mux.Vars(req)
+	width, height := parseQuerySize(req.URL.Query()["size"])
+	mode := parseQueryMode(req.URL.Query()["mode"])
+	format := parseQueryFormat(req.URL.Query()["format"])
+	ti, err := NewThumbInfoFromFile("/"+vars["path"], width, height, mode, format)
+	if err != nil {
+		return "", err
+	}
+	path, err := cacheDir.Get(ti)
+	if err != nil {
+		return "", err
+	}
+	return path, nil
 }
 
 var reInt, _ = regexp.Compile("[0-9]+")
