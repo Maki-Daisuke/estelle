@@ -40,7 +40,7 @@ func main() {
 	router.HandleFunc("/thumb/{path}", handleThumb).
 		Methods("GET")
 
-	n := negroni.Classic()
+	n := negroni.New(negroni.NewRecovery(), negroni.NewLogger())
 	n.UseHandler(router)
 	n.Run(fmt.Sprintf(":%d", opts.Port))
 }
