@@ -106,8 +106,8 @@ This will return response body in image/jpeg format containing thumbnail image.
 Caching
 -------
 
-Estelle caches generated thumbnails in a directory specified by `path-to-cache-dir`
-command-line parameter. Estelle identifies a thumbnail corresponding to a passed image
+Estelle caches generated thumbnails in a directory specified by `--cache-dir`
+command-line option. Estelle identifies a thumbnail corresponding to a passed image
 with hash of the image (which would be SHA1, but implementation dependent). That is,
 every time Estelle is asked to serve a thumbnail of an image, it calculates hash
 value of the image, then find an appropriate thumbnail. If there is no thumbnail
