@@ -37,9 +37,9 @@ func main() {
 	}
 
 	router := mux.NewRouter()
-	router.HandleFunc("/file/{path:[^?]+}", handleFile).
+	router.HandleFunc("/file{path:(/[^?]+)?}", handleFile).
 		Methods("GET")
-	router.HandleFunc("/thumb/{path:[^?]+}", handleThumb).
+	router.HandleFunc("/thumb{path:(/[^?]+)?}", handleThumb).
 		Methods("GET")
 
 	n := negroni.New(negroni.NewRecovery(), negroni.NewLogger())
@@ -90,14 +90,24 @@ func handleThumb(res http.ResponseWriter, req *http.Request) {
 
 func findOrMakeThumbnail(req *http.Request) (string, error) {
 	vars := mux.Vars(req)
+	path := vars["path"]
+	if path == "" {
+		if len(req.URL.Query()["path"]) == 0 {
+			return "", fmt.Errorf("")
+		}
+		path = req.URL.Query()["path"][0]
+		if len(path) == 0 || path[0] != '/' {
+			path = "/" + path
+		}
+	}
 	width, height := parseQuerySize(req.URL.Query()["size"])
 	mode := parseQueryMode(req.URL.Query()["mode"])
 	format := parseQueryFormat(req.URL.Query()["format"])
-	ti, err := NewThumbInfoFromFile("/"+vars["path"], width, height, mode, format)
+	ti, err := NewThumbInfoFromFile(path, width, height, mode, format)
 	if err != nil {
 		return "", err
 	}
-	path, err := cacheDir.Get(ti)
+	path, err = cacheDir.Get(ti)
 	if err != nil {
 		return "", err
 	}
