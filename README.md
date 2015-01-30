@@ -86,7 +86,7 @@ Also, you can specify the image file by `path` query parameter:
 This means the same as the above, but you must use this way to pass file name with
 special characters, multi-byte characters for example.
 
-You can directly retrieve thumbnail image as HTTP response by requesting /get
+You can directly retrieve thumbnail image as HTTP response by requesting /thumb
 URL:
 
     curl http://localhost:1186/thumb/<absolute-path-to-image-file>?size=400x300
