@@ -10,6 +10,7 @@ import (
 )
 
 type ThumbInfo struct {
+	Id     string
 	path   string
 	Hash   Hash
 	Width  uint
@@ -24,6 +25,7 @@ func NewThumbInfoFromFile(path string, width, height uint, mode Mode, format str
 		return nil, err
 	}
 	return &ThumbInfo{
+		Id:     fmt.Sprintf("%s-%dx%d-%s.%s", hash, width, height, mode, format),
 		path:   path,
 		Hash:   hash,
 		Width:  width,
@@ -33,13 +35,17 @@ func NewThumbInfoFromFile(path string, width, height uint, mode Mode, format str
 	}, nil
 }
 
+func (ti *ThumbInfo) String() string {
+	return ti.Id
+}
+
 func (this *ThumbInfo) SaveAs(savePath string) error {
 	dir := filepath.Dir(savePath)
 	err := os.MkdirAll(dir, 0755)
 	if err != nil {
 		return err
 	}
-	params := this.prepareMagickArgs(this.path, savePath)
+	params := this.prepareMagickArgs(savePath)
 	cmd := exec.Command("convert", params...)
 	cmd.Stdout = ioutil.Discard
 	stderr := bytes.NewBuffer([]byte{})
@@ -51,8 +57,8 @@ func (this *ThumbInfo) SaveAs(savePath string) error {
 	return nil
 }
 
-func (this *ThumbInfo) prepareMagickArgs(in, out string) []string {
-	args := []string{in}
+func (this *ThumbInfo) prepareMagickArgs(out string) []string {
+	args := []string{this.path}
 	switch this.Mode {
 	case ModeFill:
 		geometry := fmt.Sprintf("%dx%d", this.Width, this.Height)

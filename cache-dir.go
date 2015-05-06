@@ -47,8 +47,7 @@ func (this *CacheDir) Get(ti *ThumbInfo) (string, error) {
 }
 
 func (this *CacheDir) Locate(ti *ThumbInfo) string {
-	hash := ti.Hash.String()
-	return fmt.Sprintf("%s/%s/%s-%dx%d-%s.%s", this.thumbDir, hash[:2], hash[2:], ti.Width, ti.Height, ti.Mode, ti.Format)
+	return fmt.Sprintf("%s/%s/%s", this.thumbDir, ti.Id[:2], ti.Id[2:])
 }
 
 func (this *CacheDir) Exists(ti *ThumbInfo) bool {
