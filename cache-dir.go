@@ -16,14 +16,14 @@ func NewCacheDir(path string) (*CacheDir, error) {
 	if err != nil {
 		return nil, err
 	}
-	this := &CacheDir{
+	cdir := &CacheDir{
 		dir:      filepath.Clean(abs_path),
 		thumbDir: filepath.Clean(abs_path + "/thumbs"),
 	}
-	stat, err := os.Stat(this.thumbDir)
+	stat, err := os.Stat(cdir.thumbDir)
 	if err != nil {
 		// Probably, it does not exist, then, try to mkdir.
-		err = os.MkdirAll(this.thumbDir, 0755)
+		err = os.MkdirAll(cdir.thumbDir, 0755)
 		if err != nil {
 			return nil, err
 		}
@@ -32,13 +32,13 @@ func NewCacheDir(path string) (*CacheDir, error) {
 			return nil, fmt.Errorf(`Path %s exists, but is not a dirctory`, path)
 		}
 	}
-	return this, nil
+	return cdir, nil
 }
 
-func (this *CacheDir) Get(ti *ThumbInfo) (string, error) {
-	path := this.Locate(ti)
-	if !this.Exists(ti) {
-		err := ti.SaveAs(this.Locate(ti))
+func (cdir *CacheDir) Get(ti *ThumbInfo) (string, error) {
+	path := cdir.Locate(ti)
+	if !cdir.Exists(ti) {
+		err := ti.SaveAs(cdir.Locate(ti))
 		if err != nil {
 			return "", err
 		}
@@ -46,12 +46,12 @@ func (this *CacheDir) Get(ti *ThumbInfo) (string, error) {
 	return path, nil
 }
 
-func (this *CacheDir) Locate(ti *ThumbInfo) string {
-	return fmt.Sprintf("%s/%s/%s", this.thumbDir, ti.Id[:2], ti.Id[2:])
+func (cdir *CacheDir) Locate(ti *ThumbInfo) string {
+	return fmt.Sprintf("%s/%s/%s", cdir.thumbDir, ti.Id[:2], ti.Id[2:])
 }
 
-func (this *CacheDir) Exists(ti *ThumbInfo) bool {
-	_, err := os.Stat(this.Locate(ti))
+func (cdir *CacheDir) Exists(ti *ThumbInfo) bool {
+	_, err := os.Stat(cdir.Locate(ti))
 	if err != nil {
 		if os.IsNotExist(err) {
 			return false

@@ -39,13 +39,13 @@ func (ti *ThumbInfo) String() string {
 	return ti.Id
 }
 
-func (this *ThumbInfo) SaveAs(savePath string) error {
+func (ti *ThumbInfo) SaveAs(savePath string) error {
 	dir := filepath.Dir(savePath)
 	err := os.MkdirAll(dir, 0755)
 	if err != nil {
 		return err
 	}
-	params := this.prepareMagickArgs(savePath)
+	params := ti.prepareMagickArgs(savePath)
 	cmd := exec.Command("convert", params...)
 	cmd.Stdout = ioutil.Discard
 	stderr := bytes.NewBuffer([]byte{})
@@ -57,11 +57,11 @@ func (this *ThumbInfo) SaveAs(savePath string) error {
 	return nil
 }
 
-func (this *ThumbInfo) prepareMagickArgs(out string) []string {
-	args := []string{this.path}
-	switch this.Mode {
+func (ti *ThumbInfo) prepareMagickArgs(out string) []string {
+	args := []string{ti.path}
+	switch ti.Mode {
 	case ModeFill:
-		geometry := fmt.Sprintf("%dx%d", this.Width, this.Height)
+		geometry := fmt.Sprintf("%dx%d", ti.Width, ti.Height)
 		args = append(args,
 			"-resize", geometry,
 			"-background", "white",
@@ -69,21 +69,21 @@ func (this *ThumbInfo) prepareMagickArgs(out string) []string {
 			"-extent", geometry,
 		)
 	case ModeFit:
-		resize := fmt.Sprintf("%dx%d^", this.Width, this.Height)
-		extent := fmt.Sprintf("%dx%d", this.Width, this.Height)
+		resize := fmt.Sprintf("%dx%d^", ti.Width, ti.Height)
+		extent := fmt.Sprintf("%dx%d", ti.Width, ti.Height)
 		args = append(args,
 			"-resize", resize,
 			"-gravity", "center",
 			"-extent", extent,
 		)
 	case ModeShrink:
-		geometry := fmt.Sprintf("%dx%d", this.Width, this.Height)
+		geometry := fmt.Sprintf("%dx%d", ti.Width, ti.Height)
 		args = append(args,
 			"-resize", geometry,
 		)
 	default:
-		panic(fmt.Sprintf("unknown resize mode (%d)", this.Mode))
+		panic(fmt.Sprintf("unknown resize mode (%d)", ti.Mode))
 	}
-	args = append(args, fmt.Sprintf("%s:%s", this.Format, out)) // explicitly specify image format
+	args = append(args, fmt.Sprintf("%s:%s", ti.Format, out)) // explicitly specify image format
 	return args
 }
