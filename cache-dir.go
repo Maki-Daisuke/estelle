@@ -7,8 +7,8 @@ import (
 )
 
 type CacheDir struct {
-	dir      string
 	thumbDir string
+	queue    *ThumbnailQueue
 }
 
 func NewCacheDir(path string) (*CacheDir, error) {
@@ -17,9 +17,9 @@ func NewCacheDir(path string) (*CacheDir, error) {
 		return nil, err
 	}
 	cdir := &CacheDir{
-		dir:      filepath.Clean(abs_path),
 		thumbDir: filepath.Clean(abs_path + "/thumbs"),
 	}
+	cdir.queue = NewThumbnailQueue(cdir.Locate)
 	stat, err := os.Stat(cdir.thumbDir)
 	if err != nil {
 		// Probably, it does not exist, then, try to mkdir.
