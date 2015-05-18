@@ -6,9 +6,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"path/filepath"
-	"regexp"
-	"strconv"
 
 	. "github.com/Maki-Daisuke/estelle"
 
@@ -24,22 +21,22 @@ var opts struct {
 	Limit    uint   `short:"L" long:"limit" default:"0" description:"How much disk space can be consumed to keep thumbnail cache"`
 }
 
-var cacheDir *CacheDir
+var estelle *Estelle
 
 func main() {
 	_, err := flags.Parse(&opts)
 	if err != nil {
 		os.Exit(1)
 	}
-	cacheDir, err = NewCacheDir(opts.CacheDir)
+	estelle, err = New(opts.CacheDir)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	router := mux.NewRouter()
-	router.HandleFunc("/file{path:(/[^?]+)?}", handleFile).
+	router.HandleFunc("/path", handlePath).
 		Methods("GET")
-	router.HandleFunc("/thumb{path:(/[^?]+)?}", handleThumb).
+	router.HandleFunc("/content", handleContent).
 		Methods("GET")
 
 	n := negroni.New(negroni.NewRecovery(), negroni.NewLogger())
@@ -47,14 +44,18 @@ func main() {
 	n.Run(fmt.Sprintf(":%d", opts.Port))
 }
 
-func handleFile(res http.ResponseWriter, req *http.Request) {
-	path, err := findOrMakeThumbnail(req)
+func handlePath(res http.ResponseWriter, req *http.Request) {
+	ti, err := ThumbInfoFromReq(req)
 	if err != nil {
 		if os.IsNotExist(err) {
 			res.WriteHeader(404)
 			res.Write([]byte("Not found"))
 			return
 		}
+		panic(err)
+	}
+	path, err := estelle.Get(2, ti)
+	if err != nil {
 		panic(err)
 	}
 	res.Header().Add("Content-Type", "text/plain")
@@ -62,8 +63,8 @@ func handleFile(res http.ResponseWriter, req *http.Request) {
 	fmt.Fprint(res, path)
 }
 
-func handleThumb(res http.ResponseWriter, req *http.Request) {
-	path, err := findOrMakeThumbnail(req)
+func handleContent(res http.ResponseWriter, req *http.Request) {
+	ti, err := ThumbInfoFromReq(req)
 	if err != nil {
 		if os.IsNotExist(err) {
 			res.WriteHeader(404)
@@ -72,67 +73,41 @@ func handleThumb(res http.ResponseWriter, req *http.Request) {
 		}
 		panic(err)
 	}
+	path, err := estelle.Get(2, ti)
+	if err != nil {
+		panic(err)
+	}
 	file, err := os.Open(path)
 	if err != nil {
 		panic(err)
 	}
-	mimeType := "image/jpeg"
-	switch filepath.Ext(path) {
-	case ".png":
-		mimeType = "image/png"
-	case ".webp":
-		mimeType = "image/webp"
-	}
-	res.Header().Add("Content-Type", mimeType)
+	res.Header().Add("Content-Type", ti.Format.MimeType())
 	res.WriteHeader(200)
 	io.Copy(res, file)
 }
 
-func findOrMakeThumbnail(req *http.Request) (string, error) {
-	vars := mux.Vars(req)
-	path := vars["path"]
-	if path == "" {
-		if len(req.URL.Query()["path"]) == 0 {
-			return "", fmt.Errorf("")
-		}
-		path = req.URL.Query()["path"][0]
-		if len(path) == 0 || path[0] != '/' {
-			path = "/" + path
-		}
+func ThumbInfoFromReq(req *http.Request) (*ThumbInfo, error) {
+	if len(req.URL.Query()["source"]) < 1 {
+		return nil, fmt.Errorf("`source` parameter is required")
 	}
-	width, height := parseQuerySize(req.URL.Query()["size"])
+	source := req.URL.Query()["source"][0]
+	if source == "" || source[0] != '/' {
+		source = "/" + source
+	}
+	size := parseQuerySize(req.URL.Query()["size"])
 	mode := parseQueryMode(req.URL.Query()["mode"])
 	format := parseQueryFormat(req.URL.Query()["format"])
-	ti, err := NewThumbInfoFromFile(path, width, height, mode, format)
-	if err != nil {
-		return "", err
-	}
-	path, err = cacheDir.Get(ti)
-	if err != nil {
-		return "", err
-	}
-	return path, nil
+	return NewThumbInfoFromFile(source, size, mode, format)
 }
 
-var reInt, _ = regexp.Compile("[0-9]+")
-var reSize, _ = regexp.Compile("([0-9]+)x([0-9]+)")
-
-func parseQuerySize(query []string) (width, height uint) {
+func parseQuerySize(query []string) Size {
 	if len(query) > 0 {
-		size := query[0]
-		s := reInt.FindString(size)
-		if s != "" {
-			n, _ := strconv.ParseUint(s, 10, 32)
-			return uint(n), uint(n)
-		}
-		m := reSize.FindStringSubmatch(size)
-		if m != nil {
-			w, _ := strconv.ParseUint(m[1], 10, 32)
-			h, _ := strconv.ParseUint(m[2], 10, 32)
-			return uint(w), uint(h)
+		size, err := SizeFromString(query[0])
+		if err == nil {
+			return size
 		}
 	}
-	return 85, 85
+	return SizeFromUint(85, 85)
 }
 
 func parseQueryMode(query []string) Mode {
@@ -150,17 +125,11 @@ func parseQueryMode(query []string) Mode {
 	}
 }
 
-func parseQueryFormat(query []string) string {
-	format := ""
+func parseQueryFormat(query []string) Format {
 	if len(query) > 0 {
-		format = query[0]
+		if format, err := FormatFromString(query[0]); err != nil {
+			return format
+		}
 	}
-	switch format {
-	default:
-		return "jpg"
-	case "png":
-		return "png"
-	case "webp":
-		return "webp"
-	}
+	return FMT_JPG
 }

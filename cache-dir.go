@@ -2,13 +2,13 @@ package estelle
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 )
 
 type CacheDir struct {
-	thumbDir string
-	queue    *ThumbnailQueue
+	dir string
 }
 
 func NewCacheDir(path string) (*CacheDir, error) {
@@ -16,38 +16,37 @@ func NewCacheDir(path string) (*CacheDir, error) {
 	if err != nil {
 		return nil, err
 	}
-	cdir := &CacheDir{
-		thumbDir: filepath.Clean(abs_path + "/thumbs"),
-	}
-	cdir.queue = NewThumbnailQueue(cdir.Locate)
-	stat, err := os.Stat(cdir.thumbDir)
-	if err != nil {
-		// Probably, it does not exist, then, try to mkdir.
-		err = os.MkdirAll(cdir.thumbDir, 0755)
+	abs_path = filepath.Clean(abs_path)
+	if stat, err := os.Stat(abs_path); err != nil {
+		if !os.IsNotExist(err) {
+			return nil, err
+		}
+		err = os.MkdirAll(abs_path, 0755)
 		if err != nil {
 			return nil, err
 		}
-	} else {
-		if !stat.Mode().IsDir() {
-			return nil, fmt.Errorf(`Path %s exists, but is not a dirctory`, path)
-		}
+	} else if !stat.IsDir() {
+		return nil, fmt.Errorf(`"%s" exists, but it is not a dirctory`, abs_path)
 	}
-	return cdir, nil
+	return &CacheDir{dir: abs_path}, nil
 }
 
-func (cdir *CacheDir) Get(ti *ThumbInfo) (string, error) {
+func (cdir *CacheDir) CreateFile(ti *ThumbInfo) (io.WriteCloser, error) {
 	path := cdir.Locate(ti)
-	if !cdir.Exists(ti) {
-		err := ti.SaveAs(cdir.Locate(ti))
-		if err != nil {
-			return "", err
-		}
+	dir := filepath.Dir(path)
+	err := os.MkdirAll(dir, 0755)
+	if err != nil {
+		return nil, err
 	}
-	return path, nil
+	file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0666)
+	if err != nil {
+		return nil, err
+	}
+	return file, nil
 }
 
 func (cdir *CacheDir) Locate(ti *ThumbInfo) string {
-	return fmt.Sprintf("%s/%s/%s", cdir.thumbDir, ti.Id[:2], ti.Id[2:])
+	return fmt.Sprintf("%s/%s/%s", cdir.dir, ti.Id[:2], ti.Id[2:])
 }
 
 func (cdir *CacheDir) Exists(ti *ThumbInfo) bool {

@@ -1,47 +1,53 @@
 package estelle
 
 import (
-	"os"
+	"runtime"
 	"sync"
 
 	"github.com/Maki-Daisuke/qlose"
 )
 
-type promise struct {
+type MaybeError struct {
 	e error
 	c chan struct{}
 }
 
-func newPromise() *promise {
-	return &promise{
+func newMaybeError() *MaybeError {
+	return &MaybeError{
 		c: make(chan struct{}),
 	}
 }
 
-func (p *promise) Signal(e error) {
-	p.e = e
-	close(p.c)
+func (me *MaybeError) signal(e error) {
+	me.e = e
+	close(me.c)
 }
 
-func (p *promise) Wait() error {
-	<-p.c
-	return p.e
+func (me *MaybeError) Wait() error {
+	<-me.c
+	return me.e
 }
 
 type ThumbnailQueue struct {
-	locator func(*ThumbInfo) string
-	lock    sync.Locker
-	queue   *qlose.Qlose
-	inQueue map[string]*promise
+	cacheDir *CacheDir
+	lock     sync.Locker
+	queue    *qlose.Qlose
+	inQueue  map[string]*MaybeError
 }
 
-func NewThumbnailQueue(locator func(*ThumbInfo) string) *ThumbnailQueue {
-	return &ThumbnailQueue{
-		locator: locator,
-		lock:    new(sync.Mutex),
-		queue:   qlose.New(1, 128),
-		inQueue: make(map[string]*promise),
+func NewThumbnailQueue(cdir *CacheDir) *ThumbnailQueue {
+	tq := &ThumbnailQueue{
+		cacheDir: cdir,
+		lock:     new(sync.Mutex),
+		queue:    qlose.New(1, 128),
+		inQueue:  make(map[string]*MaybeError),
 	}
+	runtime.SetFinalizer(tq, finalizer)
+	return tq
+}
+
+func finalizer(tq *ThumbnailQueue) {
+	tq.queue.Stop()
 }
 
 func (tq *ThumbnailQueue) IsInQueue(ti *ThumbInfo) bool {
@@ -51,27 +57,29 @@ func (tq *ThumbnailQueue) IsInQueue(ti *ThumbInfo) bool {
 	return found
 }
 
-func (tq *ThumbnailQueue) Enqueue(prio uint, ti *ThumbInfo) *promise {
+func (tq *ThumbnailQueue) Enqueue(prio uint, ti *ThumbInfo) *MaybeError {
 	tq.lock.Lock()
 	defer tq.lock.Unlock()
-	if p, found := tq.inQueue[ti.Id]; found {
-		return p
+	if me, found := tq.inQueue[ti.Id]; found {
+		return me
 	} else {
-		p := newPromise()
+		me = newMaybeError()
 		tq.queue.Enqueue(prio, func() interface{} {
-			out := tq.locator(ti)
 			var err error
-			if _, err := os.Stat(out); err == nil { // file does not exist
-				err = ti.SaveAs(out)
-			} else {
+			if tq.cacheDir.Exists(ti) {
 				err = nil
+			} else {
+				out, err := tq.cacheDir.CreateFile(ti)
+				if err == nil {
+					err = ti.Make(out)
+				}
 			}
 			tq.lock.Lock()
 			defer tq.lock.Unlock()
 			delete(tq.inQueue, ti.Id)
-			p.Signal(err)
+			me.signal(err)
 			return err
 		})
-		return p
+		return me
 	}
 }
