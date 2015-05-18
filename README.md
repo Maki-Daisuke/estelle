@@ -91,6 +91,8 @@ This will return response body in image/jpeg format containing thumbnail image.
 
 ### `/path`, `/content`
 
+- Method: GET
+
 `path` returns the absolute file path of thumbnail of the specified image.
 If the thumbnail does not exist yet, it will create it on the fly. That means,
 it will block until the thumbnail is created. If you do not want to block,
@@ -109,6 +111,16 @@ Here, `size` specifies thumbnail size and `mode` specifies how to treat differen
 `/content` works the same way as `/path`, except it returns content of thumbnail
 as response body, instead of file path. That means, clients that running on
 different hosts can call this API.
+
+### `/queue`
+
+- Method: POST
+
+Request to make thumbnail. Thumbnailing task is queued and the response will be
+returned immediately. The thumbnailing task is executed in background in order.
+
+If the thumbnailing task is successfully queued, `/queue` will return `202 Accepted`.
+If the thumbnail already exists, it will return `200 OK`.
 
 #### Query Parameters
 

@@ -38,6 +38,8 @@ func main() {
 		Methods("GET")
 	router.HandleFunc("/content", handleContent).
 		Methods("GET")
+	router.HandleFunc("/queue", handleQueue).
+		Methods("POST")
 
 	n := negroni.New(negroni.NewRecovery(), negroni.NewLogger())
 	n.UseHandler(router)
@@ -84,6 +86,26 @@ func handleContent(res http.ResponseWriter, req *http.Request) {
 	res.Header().Add("Content-Type", ti.Format.MimeType())
 	res.WriteHeader(200)
 	io.Copy(res, file)
+}
+
+func handleQueue(res http.ResponseWriter, req *http.Request) {
+	ti, err := ThumbInfoFromReq(req)
+	if err != nil {
+		if os.IsNotExist(err) {
+			res.WriteHeader(404)
+			res.Write([]byte("Not found"))
+			return
+		}
+		panic(err)
+	}
+	if estelle.Exists(ti) {
+		res.WriteHeader(200)
+		return
+	}
+	if !estelle.IsInQueue(ti) {
+		estelle.Enqueue(5, ti)
+	}
+	res.WriteHeader(202) // Accepted
 }
 
 func ThumbInfoFromReq(req *http.Request) (*ThumbInfo, error) {
