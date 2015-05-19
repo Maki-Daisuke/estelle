@@ -88,6 +88,8 @@ You can directly retrieve content of thumbnail as HTTP response by requesting
 
 This will return response body in image/jpeg format containing thumbnail image.
 
+Commands
+--------
 
 ### `/path`, `/content`
 
@@ -121,6 +123,17 @@ returned immediately. The thumbnailing task is executed in background in order.
 
 If the thumbnailing task is successfully queued, `/queue` will return `202 Accepted`.
 If the thumbnail already exists, it will return `200 OK`.
+
+### `/status`
+
+Returns status of thumbnail. This will return response immediately, that is, it
+does not block until the thumbnail task is done.
+
+The status is shown as status code as follows:
+
+- 200: the requested thumbnail already exists
+- 202: the requested thumbnail has been queued to thumbnail
+- 404: the requested thumbnail does not exist
 
 #### Query Parameters
 
