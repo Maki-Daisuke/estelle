@@ -53,14 +53,14 @@ func finalizer(tq *ThumbnailQueue) {
 func (tq *ThumbnailQueue) IsInQueue(ti *ThumbInfo) bool {
 	tq.lock.Lock()
 	defer tq.lock.Unlock()
-	_, found := tq.inQueue[ti.Id]
+	_, found := tq.inQueue[ti.Id()]
 	return found
 }
 
 func (tq *ThumbnailQueue) Enqueue(prio uint, ti *ThumbInfo) *MaybeError {
 	tq.lock.Lock()
 	defer tq.lock.Unlock()
-	if me, found := tq.inQueue[ti.Id]; found {
+	if me, found := tq.inQueue[ti.Id()]; found {
 		return me
 	} else {
 		me = newMaybeError()
@@ -76,7 +76,7 @@ func (tq *ThumbnailQueue) Enqueue(prio uint, ti *ThumbInfo) *MaybeError {
 			}
 			tq.lock.Lock()
 			defer tq.lock.Unlock()
-			delete(tq.inQueue, ti.Id)
+			delete(tq.inQueue, ti.Id())
 			me.signal(err)
 			return err
 		})

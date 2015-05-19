@@ -46,7 +46,7 @@ func (cdir *CacheDir) CreateFile(ti *ThumbInfo) (io.WriteCloser, error) {
 }
 
 func (cdir *CacheDir) Locate(ti *ThumbInfo) string {
-	return fmt.Sprintf("%s/%s/%s", cdir.dir, ti.Id[:2], ti.Id[2:])
+	return fmt.Sprintf("%s/%s/%s", cdir.dir, ti.id[:2], ti.id[2:])
 }
 
 func (cdir *CacheDir) Exists(ti *ThumbInfo) bool {

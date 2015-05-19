@@ -8,12 +8,12 @@ import (
 )
 
 type ThumbInfo struct {
-	Id     string // ID of this thumbnail
-	Source string // Absolute path to source file
-	Hash   Hash   // Hash of the source file
-	Size   Size   // Size of this thumbnail
-	Mode   Mode   // Mode of this thumbnail
-	Format Format // File format (extension) of this thumbnail
+	id     string // ID of this thumbnail
+	source string // Absolute path to source file
+	hash   Hash   // Hash of the source file
+	size   Size   // Size of this thumbnail
+	mode   Mode   // Mode of this thumbnail
+	format Format // File format (extension) of this thumbnail
 }
 
 func NewThumbInfoFromFile(path string, size Size, mode Mode, format Format) (*ThumbInfo, error) {
@@ -22,21 +22,45 @@ func NewThumbInfoFromFile(path string, size Size, mode Mode, format Format) (*Th
 		return nil, err
 	}
 	return &ThumbInfo{
-		Id:     fmt.Sprintf("%s-%s-%s.%s", hash, size, mode, format),
-		Source: path,
-		Hash:   hash,
-		Size:   size,
-		Mode:   mode,
-		Format: format,
+		id:     fmt.Sprintf("%s-%s-%s.%s", hash, size, mode, format),
+		source: path,
+		hash:   hash,
+		size:   size,
+		mode:   mode,
+		format: format,
 	}, nil
 }
 
 func (ti *ThumbInfo) String() string {
-	return ti.Id
+	return ti.id
+}
+
+func (ti *ThumbInfo) Id() string {
+	return ti.id
+}
+
+func (ti *ThumbInfo) Source() string {
+	return ti.source
+}
+
+func (ti *ThumbInfo) Hash() Hash {
+	return ti.hash
+}
+
+func (ti *ThumbInfo) Size() Size {
+	return ti.size
+}
+
+func (ti *ThumbInfo) Mode() Mode {
+	return ti.mode
+}
+
+func (ti *ThumbInfo) Format() Format {
+	return ti.format
 }
 
 func (ti *ThumbInfo) ETag() string {
-	return `"` + ti.Id + `"`
+	return `"` + ti.id + `"`
 }
 
 func (ti *ThumbInfo) Make(out io.WriteCloser) error {
@@ -54,28 +78,28 @@ func (ti *ThumbInfo) Make(out io.WriteCloser) error {
 }
 
 func (ti *ThumbInfo) prepareMagickArgs() []string {
-	args := []string{ti.Source}
-	switch ti.Mode {
+	args := []string{ti.Source()}
+	switch ti.Mode() {
 	case ModeFill:
 		args = append(args,
-			"-resize", ti.Size.String(),
+			"-resize", ti.Size().String(),
 			"-background", "white",
 			"-gravity", "center",
-			"-extent", ti.Size.String(),
+			"-extent", ti.Size().String(),
 		)
 	case ModeFit:
 		args = append(args,
-			"-resize", ti.Size.String()+"^",
+			"-resize", ti.Size().String()+"^",
 			"-gravity", "center",
-			"-extent", ti.Size.String(),
+			"-extent", ti.Size().String(),
 		)
 	case ModeShrink:
 		args = append(args,
-			"-resize", ti.Size.String(),
+			"-resize", ti.Size().String(),
 		)
 	default:
-		panic(fmt.Sprintf("unknown resize mode (%d)", ti.Mode))
+		panic(fmt.Sprintf("unknown resize mode (%d)", ti.Mode()))
 	}
-	args = append(args, ti.Format.String()+":-") // explicitly specify image format
+	args = append(args, ti.Format().String()+":-") // explicitly specify image format
 	return args
 }

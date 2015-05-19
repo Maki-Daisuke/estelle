@@ -84,7 +84,7 @@ func handleContent(res http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		panic(err)
 	}
-	res.Header().Add("Content-Type", ti.Format.MimeType())
+	res.Header().Add("Content-Type", ti.Format().MimeType())
 	res.Header().Add("ETag", ti.ETag())
 	res.WriteHeader(200)
 	io.Copy(res, file)
