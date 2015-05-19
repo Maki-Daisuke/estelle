@@ -69,35 +69,64 @@ thumbnails. There are two options available:
     recent used thumbnails. `<SIZE>` smaller than or equals to zero means no limit.
   - Default: 0
 
-Get Thumbnail
--------------
+How to Use
+----------
 
-Estelle is a HTTP server, so that you can call it by just sending HTTP request. For example:
+Estelle is a HTTP server, so that you can call it by just sending HTTP request.
+For example:
 
-    curl http://localhost:1186/file/<absolute-path-to-image-file>?size=400x400
+    curl http://localhost:1186/path?source=<absolute-path-to-image-file>&size=400x400
+
 
 This will return a single line of string as the response body, that is the file
 path of thumbnail you want.
 
-Also, you can specify the image file by `path` query parameter:
+You can directly retrieve content of thumbnail as HTTP response by requesting
+`/content`:
 
-    curl http://localhost:1186/file?path=<absolute-path-to-image-file>&size=400x400
-
-This means the same as the above, but you must use this way to pass file name with
-special characters, multi-byte characters for example.
-
-You can directly retrieve thumbnail image as HTTP response by requesting /thumb
-URL:
-
-    curl http://localhost:1186/thumb/<absolute-path-to-image-file>?size=400x300
+    curl http://localhost:1186/content?source=<absolute-path-to-image-file>&size=400x300
 
 This will return response body in image/jpeg format containing thumbnail image.
 
-### Query Parameters
 
-- `path`
+### `/path`, `/content`
+
+- Method: GET
+
+`path` returns the absolute file path of thumbnail of the specified image.
+If the thumbnail does not exist yet, it will create it on the fly. That means,
+it will block until the thumbnail is created. If you do not want to block,
+please use `/status` and `/queue` instead.
+
+An original image can be specified by either of `file` patameter, `id` parameter
+or content body of HTTP request.
+Priority is: `id` > `file` > request body.
+
+For example, if you want thumbnail of `/foo/bar/baz.jpg`, you can request like this:
+
+    curl http://localhost:1186/path?file=/foo/bar/baz.jpg&size=400x300&mode=fill
+
+Here, `size` specifies thumbnail size and `mode` specifies how to treat different aspect ratio.
+
+`/content` works the same way as `/path`, except it returns content of thumbnail
+as response body, instead of file path. That means, clients that running on
+different hosts can call this API.
+
+### `/queue`
+
+- Method: POST
+
+Request to make thumbnail. Thumbnailing task is queued and the response will be
+returned immediately. The thumbnailing task is executed in background in order.
+
+If the thumbnailing task is successfully queued, `/queue` will return `202 Accepted`.
+If the thumbnail already exists, it will return `200 OK`.
+
+#### Query Parameters
+
+- `source`
   - Path to image file
-  - Default: none
+  - Required parameter
 - `size`
   - Size of the generated thumbnail
   - Default: `85x85`
@@ -112,6 +141,7 @@ This will return response body in image/jpeg format containing thumbnail image.
   - Image format of the output thumbnail
   - One of: `jpg`, `png`, `webp`
   - Default: `jpg`
+
 
 Caching
 -------
@@ -129,4 +159,4 @@ Term of Use
 
 This software is distributed under the revised BSD License.
 
-Copyright (c) 2014, Daisuke (yet another) Maki All rights reserved.
+Copyright (c) 2014-2015, Daisuke (yet another) Maki All rights reserved.
