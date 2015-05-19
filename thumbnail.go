@@ -35,6 +35,10 @@ func (ti *ThumbInfo) String() string {
 	return ti.Id
 }
 
+func (ti *ThumbInfo) ETag() string {
+	return `"` + ti.Id + `"`
+}
+
 func (ti *ThumbInfo) Make(out io.WriteCloser) error {
 	params := ti.prepareMagickArgs()
 	cmd := exec.Command("convert", params...)

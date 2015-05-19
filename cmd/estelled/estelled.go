@@ -61,6 +61,7 @@ func handlePath(res http.ResponseWriter, req *http.Request) {
 		panic(err)
 	}
 	res.Header().Add("Content-Type", "text/plain")
+	res.Header().Add("ETag", ti.ETag())
 	res.WriteHeader(200)
 	fmt.Fprint(res, path)
 }
@@ -84,6 +85,7 @@ func handleContent(res http.ResponseWriter, req *http.Request) {
 		panic(err)
 	}
 	res.Header().Add("Content-Type", ti.Format.MimeType())
+	res.Header().Add("ETag", ti.ETag())
 	res.WriteHeader(200)
 	io.Copy(res, file)
 }
@@ -98,6 +100,7 @@ func handleQueue(res http.ResponseWriter, req *http.Request) {
 		}
 		panic(err)
 	}
+	res.Header().Add("ETag", ti.ETag())
 	if estelle.Exists(ti) {
 		res.WriteHeader(200)
 		return
