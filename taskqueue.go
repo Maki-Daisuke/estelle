@@ -64,22 +64,26 @@ func (tq *ThumbnailQueue) Enqueue(prio uint, ti *ThumbInfo) *MaybeError {
 		return me
 	} else {
 		me = newMaybeError()
-		tq.queue.Enqueue(prio, func() interface{} {
-			var err error
-			if tq.cacheDir.Exists(ti) {
-				err = nil
-			} else {
-				out, err := tq.cacheDir.CreateFile(ti)
-				if err == nil {
-					err = ti.Make(out)
+		if !ti.CanMake() {
+			me.signal(NewNoSourceError(ti))
+		} else {
+			tq.queue.Enqueue(prio, func() interface{} {
+				var err error
+				if tq.cacheDir.Exists(ti) {
+					err = nil
+				} else {
+					out, err := tq.cacheDir.CreateFile(ti)
+					if err == nil {
+						err = ti.Make(out)
+					}
 				}
-			}
-			tq.lock.Lock()
-			defer tq.lock.Unlock()
-			delete(tq.inQueue, ti.Id())
-			me.signal(err)
-			return err
-		})
+				tq.lock.Lock()
+				defer tq.lock.Unlock()
+				delete(tq.inQueue, ti.Id())
+				me.signal(err)
+				return err
+			})
+		}
 		return me
 	}
 }

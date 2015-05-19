@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"regexp"
 )
 
 type Hash [sha1.Size]byte
@@ -33,4 +34,23 @@ func NewHashFromFile(path string) (Hash, error) {
 
 func (id Hash) String() string {
 	return fmt.Sprintf("%x", [sha1.Size]byte(id))
+}
+
+var reHash *regexp.Regexp = regexp.MustCompile(fmt.Sprintf("^[0-9a-fA-F]{%d}", sha1.Size))
+
+func NewHashFromString(s string) (Hash, error) {
+	m := reHash.FindStringSubmatch(s)
+	if m == nil {
+		return Hash{}, fmt.Errorf("not a hash string")
+	}
+
+	var buf [sha1.Size]byte
+	for i := 0; i < sha1.Size; i++ {
+		_, e := fmt.Sscanf(s, "%02x", &buf[i])
+		if e != nil {
+			return Hash{}, e
+		}
+		s = s[2:]
+	}
+	return Hash(buf), nil
 }

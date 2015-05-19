@@ -1,6 +1,9 @@
 package estelle
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 type Mode uint
 
@@ -9,6 +12,19 @@ const (
 	ModeFit    Mode = iota + 1
 	ModeShrink Mode = iota + 1
 )
+
+func ModeFromString(s string) (Mode, error) {
+	switch strings.ToLower(s) {
+	case "fill":
+		return ModeFill, nil
+	case "fit":
+		return ModeFit, nil
+	case "shrink":
+		return ModeShrink, nil
+	default:
+		return ModeFill, fmt.Errorf("invalid mode string")
+	}
+}
 
 func (m Mode) String() string {
 	switch m {

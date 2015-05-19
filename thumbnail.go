@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os/exec"
+	"regexp"
 )
 
 type ThumbInfo struct {
@@ -24,6 +25,39 @@ func NewThumbInfoFromFile(path string, size Size, mode Mode, format Format) (*Th
 	return &ThumbInfo{
 		id:     fmt.Sprintf("%s-%s-%s.%s", hash, size, mode, format),
 		source: path,
+		hash:   hash,
+		size:   size,
+		mode:   mode,
+		format: format,
+	}, nil
+}
+
+var regexpId = regexp.MustCompile("([^-]+)-([^-]+)-([^.]+)\\.([^.]+)")
+
+func NewThumbInfoFromId(id string) (*ThumbInfo, error) {
+	m := regexpId.FindStringSubmatch(id)
+	if m == nil {
+		return nil, fmt.Errorf("invalid ID string: %s", id)
+	}
+	hash, err := NewHashFromString(m[1])
+	if err != nil {
+		return nil, err
+	}
+	size, err := SizeFromString(m[2])
+	if err != nil {
+		return nil, err
+	}
+	mode, err := ModeFromString(m[3])
+	if err != nil {
+		return nil, err
+	}
+	format, err := FormatFromString(m[4])
+	if err != nil {
+		return nil, err
+	}
+	return &ThumbInfo{
+		id:     m[0],
+		source: "",
 		hash:   hash,
 		size:   size,
 		mode:   mode,
@@ -63,7 +97,14 @@ func (ti *ThumbInfo) ETag() string {
 	return `"` + ti.id + `"`
 }
 
+func (ti *ThumbInfo) CanMake() bool {
+	return ti.source != ""
+}
+
 func (ti *ThumbInfo) Make(out io.WriteCloser) error {
+	if !ti.CanMake() {
+		return NewNoSourceError(ti)
+	}
 	params := ti.prepareMagickArgs()
 	cmd := exec.Command("convert", params...)
 	cmd.Stdout = out
@@ -102,4 +143,24 @@ func (ti *ThumbInfo) prepareMagickArgs() []string {
 	}
 	args = append(args, ti.Format().String()+":-") // explicitly specify image format
 	return args
+}
+
+type InvalidIdError struct {
+	error
+}
+
+func NewInvalidIdError(e error) InvalidIdError {
+	return InvalidIdError{e}
+}
+
+type NoSourceError struct {
+	*ThumbInfo
+}
+
+func NewNoSourceError(ti *ThumbInfo) NoSourceError {
+	return NoSourceError{ti}
+}
+
+func (e NoSourceError) Error() string {
+	return fmt.Sprintf("this ThumbInfo does not have source file: %s", e.Id())
 }
