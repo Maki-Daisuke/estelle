@@ -100,13 +100,13 @@ If the thumbnail does not exist yet, it will create it on the fly. That means,
 it will block until the thumbnail is created. If you do not want to block,
 please use `/status` and `/queue` instead.
 
-An original image can be specified by either of `file` patameter, `id` parameter
+An original image can be specified by either of `source` patameter, `id` parameter
 or content body of HTTP request.
-Priority is: `id` > `file` > request body.
+Priority is: `id` > `source` > request body.
 
 For example, if you want thumbnail of `/foo/bar/baz.jpg`, you can request like this:
 
-    curl http://localhost:1186/path?file=/foo/bar/baz.jpg&size=400x300&mode=fill
+    curl http://localhost:1186/path?source=/foo/bar/baz.jpg&size=400x300&mode=fill
 
 Here, `size` specifies thumbnail size and `mode` specifies how to treat different aspect ratio.
 
