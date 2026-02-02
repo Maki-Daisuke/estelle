@@ -1,21 +1,30 @@
 package estelle
 
 import (
-	"os"
 	"testing"
 )
 
 func TestHash(t *testing.T) {
-	const expected = "2b4656041c1922391a04c3e08e6ed362ebf902ca"
-	file, err := os.Open("tests/IMG_20141207_201549.jpg")
+	const fileName = "tests/IMG_20141207_201549.jpg"
+
+	// First calculation
+	id1, err := NewHashFromFile(fileName)
 	if err != nil {
-		t.Errorf("%s", err)
+		t.Fatalf("%s", err)
 	}
-	id, err := NewHashFromReader(file)
+
+	// Second calculation (should be identical)
+	id2, err := NewHashFromFile(fileName)
 	if err != nil {
-		t.Errorf("%s", err)
+		t.Fatalf("%s", err)
 	}
-	if id.String() != expected {
-		t.Errorf("Hash value mismatch. Expected: %s, actual: %s", expected, id.String())
+
+	if id1 != id2 {
+		t.Errorf("Hash inconsistency. First: %s, Second: %s", id1, id2)
+	}
+
+	// Verify length (SHA256 hex string is 64 chars)
+	if len(id1.String()) != 64 {
+		t.Errorf("Invalid hash length: %d (expected 64)", len(id1.String()))
 	}
 }

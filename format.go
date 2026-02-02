@@ -8,7 +8,8 @@ import (
 type Format int
 
 const (
-	FMT_JPG Format = iota
+	FMT_UNKNOWN Format = iota
+	FMT_JPG
 	FMT_PNG
 	FMT_WEBP
 )
@@ -43,6 +44,8 @@ func FormatFromString(s string) (Format, error) {
 		return FMT_JPG, nil
 	case "PNG":
 		return FMT_PNG, nil
+	case "WEBP":
+		return FMT_WEBP, nil
 	}
-	return FMT_JPG, fmt.Errorf("Unsupported image format: %v", s)
+	return FMT_UNKNOWN, fmt.Errorf("Unsupported image format: %v", s)
 }

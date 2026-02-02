@@ -6,6 +6,8 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
+	"strings"
 
 	. "github.com/Maki-Daisuke/estelle"
 
@@ -15,10 +17,12 @@ import (
 )
 
 var opts struct {
-	Port     uint   `short:"p" long:"port" default:"1186" description:"Port number to listen"`
-	CacheDir string `short:"d" long:"cache-dir" default:"./estelled-cache" description:"Directory to store cache data"`
-	Expires  uint   `short:"E" long:"expires" default:"0" description:"How many minutes to keep thumbnail caches from its last access time (zero means no expiration)"`
-	Limit    uint   `short:"L" long:"limit" default:"0" description:"How much disk space can be consumed to keep thumbnail cache"`
+	Port        uint    `short:"p" long:"port" default:"1186" description:"Port number to listen"`
+	CacheDir    string  `short:"d" long:"cache-dir" default:"./estelled-cache" description:"Directory to store cache data"`
+	Expires     uint    `short:"E" long:"expires" default:"0" description:"How many minutes to keep thumbnail caches from its last access time (zero means no expiration)"`
+	Limit       string  `short:"L" long:"limit" default:"1GB" description:"How much disk space can be consumed to keep thumbnail cache (e.g. 100MB, 1GB)"`
+	GCHighRatio float64 `long:"gc-high-ratio" default:"0.90" description:"The threshold ratio of cache usage to start Garbage Collection"`
+	GCLowRatio  float64 `long:"gc-low-ratio" default:"0.75" description:"The target ratio of cache usage to stop Garbage Collection"`
 }
 
 var estelle *Estelle
@@ -28,7 +32,13 @@ func main() {
 	if err != nil {
 		os.Exit(1)
 	}
-	estelle, err = New(opts.CacheDir)
+
+	limitBytes, err := parseBytes(opts.Limit)
+	if err != nil {
+		log.Fatalf("Invalid limit format: %v", err)
+	}
+
+	estelle, err = New(opts.CacheDir, limitBytes, opts.GCHighRatio, opts.GCLowRatio)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -37,6 +47,8 @@ func main() {
 	router.HandleFunc("/status", handleStatus).
 		Methods("GET")
 	router.HandleFunc("/path", handlePath).
+		Methods("GET")
+	router.HandleFunc("/get", handlePath).
 		Methods("GET")
 	router.HandleFunc("/content", handleContent).
 		Methods("GET")
@@ -48,35 +60,30 @@ func main() {
 	n.Run(fmt.Sprintf(":%d", opts.Port))
 }
 
-func handleStatus(res http.ResponseWriter, req *http.Request) {
-	ti, err := thumbInfoFromReq(req)
-	switch err.(type) {
-	case nil:
-		// OK
-	case InvalidIdError:
-		res.WriteHeader(404)
-		res.Write([]byte(err.Error()))
-		return
-	default:
-		if os.IsNotExist(err) {
-			res.WriteHeader(404)
-			res.Write([]byte("Not found"))
-			return
-		}
-		panic(err)
+func parseBytes(s string) (int64, error) {
+	s = strings.ToUpper(strings.TrimSpace(s))
+	if s == "" || s == "0" {
+		return 0, nil
 	}
-	if estelle.Exists(ti) {
-		res.Header().Add("ETag", ti.ETag())
-		res.WriteHeader(200)
-		return
+	var unit int64 = 1
+	if strings.HasSuffix(s, "KB") || strings.HasSuffix(s, "K") {
+		unit = 1024
+		s = strings.TrimRight(s, "KB")
+		s = strings.TrimRight(s, "K")
+	} else if strings.HasSuffix(s, "MB") || strings.HasSuffix(s, "M") {
+		unit = 1024 * 1024
+		s = strings.TrimRight(s, "MB")
+		s = strings.TrimRight(s, "M")
+	} else if strings.HasSuffix(s, "GB") || strings.HasSuffix(s, "G") {
+		unit = 1024 * 1024 * 1024
+		s = strings.TrimRight(s, "GB")
+		s = strings.TrimRight(s, "G")
 	}
-	if estelle.IsInQueue(ti) {
-		res.Header().Add("ETag", ti.ETag())
-		res.WriteHeader(202)
-		return
+	val, err := strconv.ParseInt(s, 10, 64)
+	if err != nil {
+		return 0, err
 	}
-	res.WriteHeader(404)
-	res.Write([]byte("Not found"))
+	return val * unit, nil
 }
 
 func handlePath(res http.ResponseWriter, req *http.Request) {
@@ -85,11 +92,13 @@ func handlePath(res http.ResponseWriter, req *http.Request) {
 	case nil:
 		// OK
 	case InvalidIdError, NoSourceError:
+		log.Printf("Error (InvalidId/NoSource): %v\n", err)
 		res.WriteHeader(404)
 		res.Write([]byte("Not found"))
 		return
 	default:
 		if os.IsNotExist(err) {
+			log.Printf("Error (NotExist): %v\n", err)
 			res.WriteHeader(404)
 			res.Write([]byte("Not found"))
 			return
@@ -163,13 +172,10 @@ func findOrMakeThumbFromReq(req *http.Request) (string, *ThumbInfo, error) {
 }
 
 func thumbInfoFromReq(req *http.Request) (*ThumbInfo, error) {
-	if len(req.URL.Query()["id"]) > 0 {
-		return NewThumbInfoFromId(req.URL.Query()["id"][0])
+	if !(len(req.URL.Query()["source"]) > 0) {
+		return nil, fmt.Errorf(`"source" is required`)
 	}
-	source := ""
-	if len(req.URL.Query()["source"]) > 0 {
-		source = req.URL.Query()["source"][0]
-	}
+	source := req.URL.Query()["source"][0]
 	if source != "" && source[0] != '/' {
 		source = "/" + source
 	}
@@ -211,4 +217,9 @@ func parseQueryFormat(query []string) Format {
 		}
 	}
 	return FMT_JPG
+}
+
+func handleStatus(res http.ResponseWriter, req *http.Request) {
+	res.WriteHeader(200)
+	res.Write([]byte("OK"))
 }

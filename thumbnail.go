@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"os/exec"
-	"regexp"
 )
 
 type ThumbInfo struct {
@@ -25,39 +24,6 @@ func NewThumbInfoFromFile(path string, size Size, mode Mode, format Format) (*Th
 	return &ThumbInfo{
 		id:     fmt.Sprintf("%s-%s-%s.%s", hash, size, mode, format),
 		source: path,
-		hash:   hash,
-		size:   size,
-		mode:   mode,
-		format: format,
-	}, nil
-}
-
-var regexpId = regexp.MustCompile("([^-]+)-([^-]+)-([^.]+)\\.([^.]+)")
-
-func NewThumbInfoFromId(id string) (*ThumbInfo, error) {
-	m := regexpId.FindStringSubmatch(id)
-	if m == nil {
-		return nil, fmt.Errorf("invalid ID string: %s", id)
-	}
-	hash, err := NewHashFromString(m[1])
-	if err != nil {
-		return nil, err
-	}
-	size, err := SizeFromString(m[2])
-	if err != nil {
-		return nil, err
-	}
-	mode, err := ModeFromString(m[3])
-	if err != nil {
-		return nil, err
-	}
-	format, err := FormatFromString(m[4])
-	if err != nil {
-		return nil, err
-	}
-	return &ThumbInfo{
-		id:     m[0],
-		source: "",
 		hash:   hash,
 		size:   size,
 		mode:   mode,
@@ -113,7 +79,7 @@ func (ti *ThumbInfo) Make(out io.WriteCloser) error {
 	cmd.Stderr = stderr
 	err := cmd.Run() // block until the command completes.
 	if err != nil {
-		return fmt.Errorf(stderr.String())
+		return fmt.Errorf("%s", stderr.String())
 	}
 	return nil
 }

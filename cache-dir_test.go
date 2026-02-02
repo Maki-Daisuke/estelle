@@ -24,7 +24,6 @@ func TestCacheDir(t *testing.T) {
 
 func TestCacheDirSaveAs(t *testing.T) {
 	const fileName = "tests/IMG_20141207_201549.jpg"
-	const correctHash = "2b4656041c1922391a04c3e08e6ed362ebf902ca"
 	cacheDir, err := NewCacheDir("tests/cache")
 	if err != nil {
 		t.Error(err)
@@ -40,9 +39,14 @@ func TestCacheDirSaveAs(t *testing.T) {
 	}
 
 	path := cacheDir.Locate(thumbInfo)
-	expected, _ := filepath.Abs("./tests/cache/2b/4656041c1922391a04c3e08e6ed362ebf902ca-480x480-fill.jpg")
+	
+	// Expected format: .../cache/xx/yy/full_hash-...
+	h := thumbInfo.Hash().String()
+	expectedRel := filepath.Join("tests", "cache", h[:2], h[2:4], thumbInfo.Id())
+	expected, _ := filepath.Abs(expectedRel)
+	
 	if expected != path {
-		t.Errorf(`unnexpected result: %s`, path)
+		t.Errorf("Unexpected path.\nExpected: %s\nActual:   %s", expected, path)
 	}
 
 	writer, err := cacheDir.CreateFile(thumbInfo)

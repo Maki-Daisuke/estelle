@@ -1,0 +1,14 @@
+version: '3'
+services:
+  estelle:
+    build: .
+    volumes:
+      - .:/app
+      - ./test_cache_output:/cache
+    ports:
+      - "1186:1186"
+    working_dir: /app
+    # Limit to 100MB for testing GC
+    command: ["estelled", "--cache-dir=/cache", "--limit=100MB", "/app/tests"]
+    environment:
+      - GODEBUG=asyncpreemptoff=1 

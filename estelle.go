@@ -5,9 +5,10 @@ import "path/filepath"
 type Estelle struct {
 	cacheDir *CacheDir
 	queue    *ThumbnailQueue
+	gc       *GarbageCollector
 }
 
-func New(path string) (*Estelle, error) {
+func New(path string, cacheLimit int64, gcHighRatio, gcLowRatio float64) (*Estelle, error) {
 	path, err := filepath.Abs(path)
 	if err != nil {
 		return nil, err
@@ -16,8 +17,9 @@ func New(path string) (*Estelle, error) {
 	if err != nil {
 		return nil, err
 	}
-	queue := NewThumbnailQueue(cdir)
-	return &Estelle{cacheDir: cdir, queue: queue}, nil
+	gc := NewGarbageCollector(cdir, cacheLimit, gcHighRatio, gcLowRatio)
+	queue := NewThumbnailQueue(cdir, gc)
+	return &Estelle{cacheDir: cdir, queue: queue, gc: gc}, nil
 }
 
 func (estl *Estelle) Exists(ti *ThumbInfo) bool {
