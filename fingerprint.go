@@ -5,17 +5,15 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-
-	"github.com/goccy/go-json"
 )
 
 type Hash [sha256.Size]byte
 
 type Fingerprint struct {
-	Path      string `json:"path"`
-	Size      int64  `json:"size"`
-	MtimeSec  int64  `json:"mtime_sec"`
-	MtimeNsec int64  `json:"mtime_nsec"`
+	Path      string
+	Size      int64
+	MtimeSec  int64
+	MtimeNsec int64
 }
 
 func NewHashFromFile(path string) (Hash, error) {
@@ -44,25 +42,11 @@ func NewFingerprint(path string) (*Fingerprint, error) {
 }
 
 func (fp *Fingerprint) Hash() Hash {
-	// Serialize fingerprint to JSON to ensure deterministic hashing of the struct fields
-	data, _ := json.Marshal(fp)
-	return sha256.Sum256(data)
+	// Serialize fingerprint by joining fields with null bytes, which are not allowed in file paths.
+	str := fmt.Sprintf("%s\x00%x\x00%x\x00%x", fp.Path, fp.Size, fp.MtimeSec, fp.MtimeNsec)
+	return sha256.Sum256([]byte(str))
 }
 
 func (h Hash) String() string {
 	return fmt.Sprintf("%x", [sha256.Size]byte(h))
-}
-
-func HashFromString(s string) (Hash, error) {
-	if len(s) != sha256.Size*2 {
-		return Hash{}, fmt.Errorf("invalid hash length: %d", len(s))
-	}
-	var h Hash
-	for i := 0; i < sha256.Size; i++ {
-		_, err := fmt.Sscanf(s[i*2:i*2+2], "%02x", &h[i])
-		if err != nil {
-			return Hash{}, err
-		}
-	}
-	return h, nil
 }
