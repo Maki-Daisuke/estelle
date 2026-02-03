@@ -38,7 +38,7 @@ func TestCacheDirSaveAs(t *testing.T) {
 		t.Errorf("thumbnail should not exist yet")
 	}
 
-	path := cacheDir.Path(thumbInfo)
+	path := cacheDir.ThumbPath(thumbInfo)
 
 	// Expected format: .../cache/xx/yy/full_hash-...
 	id := thumbInfo.String()

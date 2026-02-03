@@ -1,116 +1,114 @@
 package estelle
 
 import (
+	"context"
+	"io/fs"
+	"log"
 	"math/rand"
 	"os"
 	"path/filepath"
-	"sync"
 	"sync/atomic"
 	"time"
 )
 
 type GarbageCollector struct {
-	cacheDir  *CacheDir
+	dir       string
 	limit     int64
 	highLimit int64 // cache-limit * high-ratio
 	lowLimit  int64 // cache-limit * low-ratio
 	used      int64 // atomic
-	mu        sync.Mutex
-	isGCing   bool
+	gcSignal  chan struct{}
 }
 
-func NewGarbageCollector(cd *CacheDir, limit int64, highRatio, lowRatio float64) *GarbageCollector {
+func NewGarbageCollector(ctx context.Context, dir string, limit int64, highRatio, lowRatio float64) *GarbageCollector {
 	gc := &GarbageCollector{
-		cacheDir:  cd,
+		dir:       dir,
 		limit:     limit,
 		highLimit: int64(float64(limit) * highRatio),
 		lowLimit:  int64(float64(limit) * lowRatio),
+		gcSignal:  make(chan struct{}, 1),
 	}
 	// Asynchronous startup scan
-	go gc.ScanUsage()
+	go gc.Run(ctx)
 	return gc
 }
 
 func (gc *GarbageCollector) Track(delta int64) {
-	newUsed := atomic.AddInt64(&gc.used, delta)
-	if delta > 0 && newUsed > gc.highLimit {
-		gc.MaybeGC()
+	atomic.AddInt64(&gc.used, delta)
+	select {
+	case gc.gcSignal <- struct{}{}:
+	default:
+		// GC is already running
 	}
 }
 
-func (gc *GarbageCollector) ScanUsage() {
-	var total int64
-	filepath.Walk(gc.cacheDir.path, func(path string, info os.FileInfo, err error) error {
-		if err == nil && !info.IsDir() {
-			total += info.Size()
-		}
-		return nil
-	})
-	atomic.StoreInt64(&gc.used, total)
-}
-
-func (gc *GarbageCollector) MaybeGC() {
-	gc.mu.Lock()
-	if gc.isGCing {
-		gc.mu.Unlock()
-		return
-	}
-	gc.isGCing = true
-	gc.mu.Unlock()
-
-	go gc.RunGC()
-}
-
-func (gc *GarbageCollector) RunGC() {
-	defer func() {
-		gc.mu.Lock()
-		gc.isGCing = false
-		gc.mu.Unlock()
-	}()
-
-	// Random Sampling LRU
-	// 1. Pick random subdirectories
-	// 2. Scan files in them
-	// 3. Delete oldest accessed until usage < lowLimit
-
-	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
-
-	for atomic.LoadInt64(&gc.used) > gc.lowLimit {
-		// Randomly select a shard: root/head2/next2
-		// head2: 00-ff
-		// next2: 00-ff
-
-		// To be efficient, we might try to pick existing directories.
-		// Since we don't track directory list, we can just try random hex.
-		// But scanning empty dirs is wasteful.
-		// Alternatively, ReadDir of root, pick random, ReadDir of that, pick random.
-
-		removed := gc.evictOneBatch(rng)
-		if removed == 0 {
-			// Could not remove anything or empty cache?
-			// Avoid infinite loop if cache is small but "used" is high (inconsistency?)
-			// Or if all files are locked?
-			// Sleep a bit to avoid CPU spin
-			time.Sleep(100 * time.Millisecond)
-
-			// If used is still high but we can't find files, maybe re-scan?
-			if atomic.LoadInt64(&gc.used) > gc.lowLimit {
-				// Resync used count just in case
-				gc.ScanUsage()
-				// If still high and no eviction, maybe just break to avoid hang
-				if atomic.LoadInt64(&gc.used) <= gc.lowLimit {
-					break
-				}
-				// Force break to prevent deadlock if we really can't delete
-				break
+func (gc *GarbageCollector) Run(ctx context.Context) {
+	gc.initialScan(ctx)
+	for { // Wait for GC signal or context cancellation
+		select {
+		case <-ctx.Done():
+			return
+		case <-gc.gcSignal:
+			if atomic.LoadInt64(&gc.used) > gc.highLimit {
+				gc.RunGC(ctx)
 			}
 		}
 	}
 }
 
-func (gc *GarbageCollector) evictOneBatch(rng *rand.Rand) int64 {
+func (gc *GarbageCollector) initialScan(ctx context.Context) {
+	var total int64
+	filepath.WalkDir(gc.dir, func(path string, de fs.DirEntry, err error) error {
+		select { // Check if the context is canceled
+		case <-ctx.Done():
+			return fs.SkipAll
+		default:
+		}
+		if err == nil && de.Type().IsRegular() {
+			info, _ := de.Info()
+			total += info.Size()
+		}
+		return nil
+	})
+	gc.Track(total) // This kicks the GC if needed
+}
+
+func (gc *GarbageCollector) RunGC(ctx context.Context) {
+	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
+
+	for atomic.LoadInt64(&gc.used) > gc.lowLimit {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			removed := gc.evictOneBatch(rng)
+			if removed == 0 {
+				// Could not remove anything or empty cache?
+				// Avoid infinite loop if cache is small but "used" is high (inconsistency?)
+				// Or if all files are locked?
+				// Sleep a bit to avoid CPU spin
+				time.Sleep(100 * time.Millisecond)
+			}
+		}
+	}
+}
+
+func (gc *GarbageCollector) evictOneBatch(rng *rand.Rand) int64 { // Randomly select a shard: root/head2/next2
+	// Random Sampling LRU
+	// 1. Pick random subdirectories
+	// 2. Scan files in them
+	// 3. Delete oldest accessed until usage < lowLimit
+
+	// head2: 00-ff
+	// next2: 00-ff
+
+	// To be efficient, we might try to pick existing directories.
+	// Since we don't track directory list, we can just try random hex.
+	// But scanning empty dirs is wasteful.
+	// Alternatively, ReadDir of root, pick random, ReadDir of that, pick random.
+
 	// Simple strategy: List root dirs, pick one. List its subdirs, pick one. List files, pick oldest.
-	root, err := os.Open(gc.cacheDir.path)
+	root, err := os.Open(gc.dir)
 	if err != nil {
 		return 0
 	}
@@ -123,7 +121,7 @@ func (gc *GarbageCollector) evictOneBatch(rng *rand.Rand) int64 {
 
 	// Pick random head2
 	h2 := head2s[rng.Intn(len(head2s))]
-	h2Path := filepath.Join(gc.cacheDir.path, h2)
+	h2Path := filepath.Join(gc.dir, h2)
 
 	h2Dir, err := os.Open(h2Path)
 	if err != nil {
@@ -132,7 +130,12 @@ func (gc *GarbageCollector) evictOneBatch(rng *rand.Rand) int64 {
 	defer h2Dir.Close()
 
 	next2s, err := h2Dir.Readdirnames(-1)
-	if err != nil || len(next2s) == 0 {
+	if err != nil {
+		log.Println("failed to read directory:", err)
+		return 0
+	}
+	if len(next2s) == 0 {
+		os.Remove(h2Path)
 		return 0
 	}
 
@@ -147,8 +150,13 @@ func (gc *GarbageCollector) evictOneBatch(rng *rand.Rand) int64 {
 	}
 	defer dir.Close()
 
-	files, err := dir.Readdir(-1)
-	if err != nil || len(files) == 0 {
+	entries, err := dir.ReadDir(-1)
+	if err != nil {
+		log.Println("failed to read directory:", err)
+		return 0
+	}
+	if len(entries) == 0 {
+		os.Remove(n2Path)
 		return 0
 	}
 
@@ -177,23 +185,37 @@ func (gc *GarbageCollector) evictOneBatch(rng *rand.Rand) int64 {
 	// Then ModTime == Last Access Time (mostly).
 	// This simplifies things. I will use ModTime.
 
-	var oldest os.FileInfo
-	for _, fi := range files {
-		if !fi.IsDir() {
-			if oldest == nil || fi.ModTime().Before(oldest.ModTime()) {
-				oldest = fi
+	oldest := entries[0]
+	oldestTime := getAtime(oldest)
+	for _, de := range entries[1:] {
+		if de.Type().IsRegular() {
+			t := getAtime(de)
+			if t.Before(oldestTime) {
+				oldest = de
+				oldestTime = t
 			}
 		}
 	}
 
-	if oldest != nil {
-		path := filepath.Join(n2Path, oldest.Name())
-		size := oldest.Size()
-		err := os.Remove(path)
-		if err == nil {
-			gc.Track(-size)
-			return size
+	path := filepath.Join(n2Path, oldest.Name())
+	fi, err := oldest.Info()
+	if err != nil {
+		log.Printf("failed to get file info of %s: %v", path, err)
+		return 0
+	}
+	size := fi.Size()
+	err = os.Remove(path)
+	if err != nil {
+		log.Printf("failed to remove %s: %v", path, err)
+		return 0
+	}
+	atomic.AddInt64(&gc.used, -size)
+
+	if len(entries) == 1 {
+		err = os.Remove(n2Path)
+		if err != nil {
+			log.Printf("failed to remove %s: %v", n2Path, err)
 		}
 	}
-	return 0
+	return size
 }

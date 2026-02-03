@@ -1,6 +1,9 @@
 package estelle
 
-import "path/filepath"
+import (
+	"context"
+	"path/filepath"
+)
 
 type Estelle struct {
 	cacheDir *CacheDir
@@ -8,7 +11,7 @@ type Estelle struct {
 	gc       *GarbageCollector
 }
 
-func New(path string, cacheLimit int64, gcHighRatio, gcLowRatio float64) (*Estelle, error) {
+func New(ctx context.Context, path string, cacheLimit int64, gcHighRatio, gcLowRatio float64) (*Estelle, error) {
 	path, err := filepath.Abs(path)
 	if err != nil {
 		return nil, err
@@ -17,7 +20,7 @@ func New(path string, cacheLimit int64, gcHighRatio, gcLowRatio float64) (*Estel
 	if err != nil {
 		return nil, err
 	}
-	gc := NewGarbageCollector(cdir, cacheLimit, gcHighRatio, gcLowRatio)
+	gc := NewGarbageCollector(ctx, cdir.path, cacheLimit, gcHighRatio, gcLowRatio)
 	queue := NewThumbnailQueue(cdir, gc)
 	return &Estelle{cacheDir: cdir, queue: queue, gc: gc}, nil
 }

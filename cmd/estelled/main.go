@@ -1,12 +1,15 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
 	"strconv"
 	"strings"
+	"syscall"
 
 	. "github.com/Maki-Daisuke/estelle"
 
@@ -37,7 +40,11 @@ func main() {
 		log.Fatalf("Invalid limit format: %v", err)
 	}
 
-	estelle, err = New(opts.CacheDir, limitBytes, opts.GCHighRatio, opts.GCLowRatio)
+	// Setup signal handler to properly shutdown the goroutine behind Estelle
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	estelle, err = New(ctx, opts.CacheDir, limitBytes, opts.GCHighRatio, opts.GCLowRatio)
 	if err != nil {
 		log.Fatal(err)
 	}
