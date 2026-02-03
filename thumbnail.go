@@ -35,26 +35,6 @@ func (ti *ThumbInfo) String() string {
 	return ti.id
 }
 
-func (ti *ThumbInfo) Source() string {
-	return ti.source
-}
-
-func (ti *ThumbInfo) Hash() Hash {
-	return ti.hash
-}
-
-func (ti *ThumbInfo) Size() Size {
-	return ti.size
-}
-
-func (ti *ThumbInfo) Mode() Mode {
-	return ti.mode
-}
-
-func (ti *ThumbInfo) Format() Format {
-	return ti.format
-}
-
 func (ti *ThumbInfo) CanMake() bool {
 	return ti.source != ""
 }
@@ -77,29 +57,29 @@ func (ti *ThumbInfo) Make(out io.WriteCloser) error {
 }
 
 func (ti *ThumbInfo) prepareMagickArgs() []string {
-	args := []string{ti.Source()}
-	switch ti.Mode() {
+	args := []string{ti.source}
+	switch ti.mode {
 	case ModeFill:
 		args = append(args,
-			"-resize", ti.Size().String(),
+			"-resize", ti.size.String(),
 			"-background", "white",
 			"-gravity", "center",
-			"-extent", ti.Size().String(),
+			"-extent", ti.size.String(),
 		)
 	case ModeFit:
 		args = append(args,
-			"-resize", ti.Size().String()+"^",
+			"-resize", ti.size.String()+"^",
 			"-gravity", "center",
-			"-extent", ti.Size().String(),
+			"-extent", ti.size.String(),
 		)
 	case ModeShrink:
 		args = append(args,
-			"-resize", ti.Size().String(),
+			"-resize", ti.size.String(),
 		)
 	default:
-		panic(fmt.Sprintf("unknown resize mode (%d)", ti.Mode()))
+		panic(fmt.Sprintf("unknown resize mode (%d)", ti.mode))
 	}
-	args = append(args, ti.Format().String()+":-") // explicitly specify image format
+	args = append(args, ti.format.String()+":-") // explicitly specify image format
 	return args
 }
 
