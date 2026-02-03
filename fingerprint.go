@@ -1,13 +1,13 @@
 package estelle
 
 import (
-	"crypto/sha256"
+	"crypto/sha1"
 	"fmt"
 	"os"
 	"path/filepath"
 )
 
-type Hash [sha256.Size]byte
+type Hash [sha1.Size]byte
 
 type Fingerprint struct {
 	Path      string
@@ -16,24 +16,24 @@ type Fingerprint struct {
 	MtimeNsec int64
 }
 
-func NewHashFromFile(path string) (Hash, error) {
-	fp, err := NewFingerprint(path)
+func HashFromFile(path string) (Hash, error) {
+	fp, err := FingerprintFromFile(path)
 	if err != nil {
 		return Hash{}, err
 	}
 	return fp.Hash(), nil
 }
 
-func NewFingerprint(path string) (*Fingerprint, error) {
+func FingerprintFromFile(path string) (Fingerprint, error) {
 	absPath, err := filepath.Abs(path)
 	if err != nil {
-		return nil, err
+		return Fingerprint{}, err
 	}
 	fi, err := os.Stat(absPath)
 	if err != nil {
-		return nil, err
+		return Fingerprint{}, err
 	}
-	return &Fingerprint{
+	return Fingerprint{
 		Path:      absPath,
 		Size:      fi.Size(),
 		MtimeSec:  fi.ModTime().Unix(),
@@ -44,9 +44,9 @@ func NewFingerprint(path string) (*Fingerprint, error) {
 func (fp *Fingerprint) Hash() Hash {
 	// Serialize fingerprint by joining fields with null bytes, which are not allowed in file paths.
 	str := fmt.Sprintf("%s\x00%x\x00%x\x00%x", fp.Path, fp.Size, fp.MtimeSec, fp.MtimeNsec)
-	return sha256.Sum256([]byte(str))
+	return sha1.Sum([]byte(str))
 }
 
 func (h Hash) String() string {
-	return fmt.Sprintf("%x", [sha256.Size]byte(h))
+	return fmt.Sprintf("%x", [sha1.Size]byte(h))
 }

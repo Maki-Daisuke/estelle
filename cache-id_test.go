@@ -1,30 +1,39 @@
+//go:build linux
+
+// 'cause, this requires 'touch' command.
+
 package estelle
 
 import (
+	"os/exec"
 	"testing"
+	"time"
 )
 
 func TestHash(t *testing.T) {
 	const fileName = "tests/IMG_20141207_201549.jpg"
 
-	// First calculation
-	id1, err := NewHashFromFile(fileName)
+	id1, err := HashFromFile(fileName)
 	if err != nil {
 		t.Fatalf("%s", err)
 	}
 
-	// Second calculation (should be identical)
-	id2, err := NewHashFromFile(fileName)
+	time.Sleep(10 * time.Millisecond)
+	if err := exec.Command("touch", fileName).Run(); err != nil {
+		t.Fatalf("%s", err)
+	}
+
+	id2, err := HashFromFile(fileName)
 	if err != nil {
 		t.Fatalf("%s", err)
 	}
 
-	if id1 != id2 {
-		t.Errorf("Hash inconsistency. First: %s, Second: %s", id1, id2)
+	if id1 == id2 {
+		t.Errorf("Hash is not changed after touch")
 	}
 
-	// Verify length (SHA256 hex string is 64 chars)
-	if len(id1.String()) != 64 {
-		t.Errorf("Invalid hash length: %d (expected 64)", len(id1.String()))
+	// Verify length (SHA1 hex string is 40 chars)
+	if len(id1.String()) != 40 {
+		t.Errorf("Invalid hash length: %d (expected 40)", len(id1.String()))
 	}
 }

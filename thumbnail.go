@@ -8,7 +8,7 @@ import (
 )
 
 type ThumbInfo struct {
-	id     string // ID of this thumbnail
+	id     string // ID of this thumbnail (Fingerprint-Size-Mode.Format)
 	source string // Absolute path to source file
 	hash   Hash   // Hash of the source file
 	size   Size   // Size of this thumbnail
@@ -17,7 +17,7 @@ type ThumbInfo struct {
 }
 
 func NewThumbInfoFromFile(path string, size Size, mode Mode, format Format) (*ThumbInfo, error) {
-	hash, err := NewHashFromFile(path)
+	hash, err := HashFromFile(path)
 	if err != nil {
 		return nil, err
 	}
