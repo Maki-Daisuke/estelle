@@ -23,7 +23,7 @@ func New(path string, cacheLimit int64, gcHighRatio, gcLowRatio float64) (*Estel
 }
 
 func (estl *Estelle) Exists(ti *ThumbInfo) bool {
-	return estl.cacheDir.Exists(ti)
+	return estl.cacheDir.Locate(ti) != ""
 }
 
 func (estl *Estelle) Enqueue(priority uint, ti *ThumbInfo) *MaybeError {

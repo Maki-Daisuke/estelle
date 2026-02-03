@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"io"
 	"log"
 	"net/http"
 	"os"
@@ -44,16 +43,11 @@ func main() {
 	}
 
 	router := mux.NewRouter()
-	router.HandleFunc("/status", handleStatus).
-		Methods("GET")
-	router.HandleFunc("/path", handlePath).
-		Methods("GET")
-	router.HandleFunc("/get", handlePath).
-		Methods("GET")
-	router.HandleFunc("/content", handleContent).
-		Methods("GET")
+	// TODO: implement handleGet
+	router.HandleFunc("/get", handleQueue).
+		Methods("GET", "POST")
 	router.HandleFunc("/queue", handleQueue).
-		Methods("POST")
+		Methods("GET", "POST")
 
 	n := negroni.New(negroni.NewRecovery(), negroni.NewLogger())
 	n.UseHandler(router)
@@ -86,58 +80,6 @@ func parseBytes(s string) (int64, error) {
 	return val * unit, nil
 }
 
-func handlePath(res http.ResponseWriter, req *http.Request) {
-	path, ti, err := findOrMakeThumbFromReq(req)
-	switch err.(type) {
-	case nil:
-		// OK
-	case InvalidIdError, NoSourceError:
-		log.Printf("Error (InvalidId/NoSource): %v\n", err)
-		res.WriteHeader(404)
-		res.Write([]byte("Not found"))
-		return
-	default:
-		if os.IsNotExist(err) {
-			log.Printf("Error (NotExist): %v\n", err)
-			res.WriteHeader(404)
-			res.Write([]byte("Not found"))
-			return
-		}
-		panic(err)
-	}
-	res.Header().Add("Content-Type", "text/plain")
-	res.Header().Add("ETag", ti.ETag())
-	res.WriteHeader(200)
-	fmt.Fprint(res, path)
-}
-
-func handleContent(res http.ResponseWriter, req *http.Request) {
-	path, ti, err := findOrMakeThumbFromReq(req)
-	switch err.(type) {
-	case nil:
-		// Ok
-	case InvalidIdError, NoSourceError:
-		res.WriteHeader(404)
-		res.Write([]byte("Not found"))
-		return
-	default:
-		if os.IsNotExist(err) {
-			res.WriteHeader(404)
-			res.Write([]byte("Not found"))
-			return
-		}
-		panic(err)
-	}
-	file, err := os.Open(path)
-	if err != nil {
-		panic(err)
-	}
-	res.Header().Add("Content-Type", ti.Format().MimeType())
-	res.Header().Add("ETag", ti.ETag())
-	res.WriteHeader(200)
-	io.Copy(res, file)
-}
-
 func handleQueue(res http.ResponseWriter, req *http.Request) {
 	ti, err := thumbInfoFromReq(req)
 	if err != nil {
@@ -148,7 +90,6 @@ func handleQueue(res http.ResponseWriter, req *http.Request) {
 		}
 		panic(err)
 	}
-	res.Header().Add("ETag", ti.ETag())
 	if estelle.Exists(ti) {
 		res.WriteHeader(200)
 		return
@@ -217,9 +158,4 @@ func parseQueryFormat(query []string) Format {
 		}
 	}
 	return FMT_JPG
-}
-
-func handleStatus(res http.ResponseWriter, req *http.Request) {
-	res.WriteHeader(200)
-	res.Write([]byte("OK"))
 }

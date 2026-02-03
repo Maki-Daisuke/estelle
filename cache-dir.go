@@ -1,14 +1,17 @@
 package estelle
 
 import (
+	"errors"
 	"fmt"
 	"io"
+	"io/fs"
+	"log"
 	"os"
 	"path/filepath"
 )
 
 type CacheDir struct {
-	dir string
+	path string
 }
 
 func NewCacheDir(path string) (*CacheDir, error) {
@@ -16,7 +19,6 @@ func NewCacheDir(path string) (*CacheDir, error) {
 	if err != nil {
 		return nil, err
 	}
-	abs_path = filepath.Clean(abs_path)
 	if stat, err := os.Stat(abs_path); err != nil {
 		if !os.IsNotExist(err) {
 			return nil, err
@@ -28,11 +30,17 @@ func NewCacheDir(path string) (*CacheDir, error) {
 	} else if !stat.IsDir() {
 		return nil, fmt.Errorf(`"%s" exists, but it is not a dirctory`, abs_path)
 	}
-	return &CacheDir{dir: abs_path}, nil
+	temp, err := os.CreateTemp(abs_path, "estelle-test-*")
+	if err != nil {
+		return nil, fmt.Errorf("cache directory (%s) is not writable: %s", abs_path, err)
+	}
+	temp.Close()
+	os.Remove(temp.Name())
+	return &CacheDir{path: abs_path}, nil
 }
 
 func (cdir *CacheDir) CreateFile(ti *ThumbInfo) (io.WriteCloser, error) {
-	path := cdir.Locate(ti)
+	path := cdir.Path(ti)
 	dir := filepath.Dir(path)
 	err := os.MkdirAll(dir, 0755)
 	if err != nil {
@@ -45,24 +53,22 @@ func (cdir *CacheDir) CreateFile(ti *ThumbInfo) (io.WriteCloser, error) {
 	return file, nil
 }
 
-func (cdir *CacheDir) Locate(ti *ThumbInfo) string {
-	h := ti.Hash().String()
-	return filepath.Join(cdir.dir, h[:2], h[2:4], ti.Id())
+func (cdir *CacheDir) Path(ti *ThumbInfo) string {
+	id := ti.String()
+	return filepath.Join(cdir.path, id[:2], id[2:4], id)
 }
 
-func (cdir *CacheDir) Exists(ti *ThumbInfo) bool {
-	_, err := os.Stat(cdir.Locate(ti))
+// Locate returns the absolute path to the cache file for the given ThumbInfo.
+// It returns an empty string if the cache file does not exist.
+func (cdir *CacheDir) Locate(ti *ThumbInfo) string {
+	path := cdir.Path(ti)
+	_, err := os.Stat(path)
 	if err != nil {
-		if os.IsNotExist(err) {
-			return false
+		// Returns empty string if cache does not exist, but logs other errors.
+		if !errors.Is(err, fs.ErrNotExist) {
+			log.Printf("Error checking cache existence: %v", err)
 		}
-		// panic(err) // Don't panic on permission errors etc, just return false or log?
-		// For now, keeping original behavior somewhat but maybe avoiding panic is better?
-		// Original panicked, but maybe we should just return false?
-		// Let's print log but valid v2 design didn't specify error handling change.
-		// I will keep generic panic for unexpected errors to fail fast as per original philosophy, or just log.
-		fmt.Fprintf(os.Stderr, "Error checking cache existence: %v\n", err)
-		return false
+		return ""
 	}
-	return true
+	return path
 }

@@ -35,10 +35,6 @@ func (ti *ThumbInfo) String() string {
 	return ti.id
 }
 
-func (ti *ThumbInfo) Id() string {
-	return ti.id
-}
-
 func (ti *ThumbInfo) Source() string {
 	return ti.source
 }
@@ -57,10 +53,6 @@ func (ti *ThumbInfo) Mode() Mode {
 
 func (ti *ThumbInfo) Format() Format {
 	return ti.format
-}
-
-func (ti *ThumbInfo) ETag() string {
-	return `"` + ti.id + `"`
 }
 
 func (ti *ThumbInfo) CanMake() bool {
@@ -128,5 +120,5 @@ func NewNoSourceError(ti *ThumbInfo) NoSourceError {
 }
 
 func (e NoSourceError) Error() string {
-	return fmt.Sprintf("this ThumbInfo does not have source file: %s", e.Id())
+	return fmt.Sprintf("this ThumbInfo does not have source file: %s", e.ThumbInfo.String())
 }

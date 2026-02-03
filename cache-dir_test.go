@@ -17,8 +17,8 @@ func TestCacheDir(t *testing.T) {
 		t.Error(err)
 	}
 	cache_dir := filepath.Clean(wd + "/tests/cache")
-	if cache.dir != cache_dir {
-		t.Errorf("extected=%q, but actual=%q", cache.dir, cache_dir)
+	if cache.path != cache_dir {
+		t.Errorf("extected=%q, but actual=%q", cache.path, cache_dir)
 	}
 }
 
@@ -34,31 +34,34 @@ func TestCacheDirSaveAs(t *testing.T) {
 		t.Error(err)
 	}
 
-	if cacheDir.Exists(thumbInfo) {
+	if cacheDir.Locate(thumbInfo) != "" {
 		t.Errorf("thumbnail should not exist yet")
 	}
 
-	path := cacheDir.Locate(thumbInfo)
-	
+	path := cacheDir.Path(thumbInfo)
+
 	// Expected format: .../cache/xx/yy/full_hash-...
-	h := thumbInfo.Hash().String()
-	expectedRel := filepath.Join("tests", "cache", h[:2], h[2:4], thumbInfo.Id())
+	id := thumbInfo.String()
+	expectedRel := filepath.Join("tests", "cache", id[:2], id[2:4], thumbInfo.String())
 	expected, _ := filepath.Abs(expectedRel)
-	
+
 	if expected != path {
-		t.Errorf("Unexpected path.\nExpected: %s\nActual:   %s", expected, path)
+		t.Errorf("Unexpected path.\nExpected: %s\nActual: %s", expected, path)
 	}
 
-	writer, err := cacheDir.CreateFile(thumbInfo)
-	if err != nil {
-		t.Error(err)
-	}
-	err = thumbInfo.Make(writer)
-	if err != nil {
-		t.Error(err)
-	}
+	func() {
+		writer, err := cacheDir.CreateFile(thumbInfo)
+		if err != nil {
+			t.Fatalf("Failed to create file: %v", err)
+		}
+		defer writer.Close()
+		err = thumbInfo.Make(writer)
+		if err != nil {
+			t.Fatalf("Failed to make thumbnail: %v", err)
+		}
+	}()
 
-	if !cacheDir.Exists(thumbInfo) {
+	if cacheDir.Locate(thumbInfo) == "" {
 		t.Errorf("thumbnail should exist now")
 	}
 }

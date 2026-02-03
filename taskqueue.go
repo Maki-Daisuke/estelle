@@ -57,14 +57,14 @@ func finalizer(tq *ThumbnailQueue) {
 func (tq *ThumbnailQueue) IsInQueue(ti *ThumbInfo) bool {
 	tq.lock.Lock()
 	defer tq.lock.Unlock()
-	_, found := tq.inQueue[ti.Id()]
+	_, found := tq.inQueue[ti.String()]
 	return found
 }
 
 func (tq *ThumbnailQueue) Enqueue(prio uint, ti *ThumbInfo) *MaybeError {
 	tq.lock.Lock()
 	defer tq.lock.Unlock()
-	if me, found := tq.inQueue[ti.Id()]; found {
+	if me, found := tq.inQueue[ti.String()]; found {
 		return me
 	} else {
 		me = newMaybeError()
@@ -73,7 +73,7 @@ func (tq *ThumbnailQueue) Enqueue(prio uint, ti *ThumbInfo) *MaybeError {
 		} else {
 			tq.queue.Enqueue(prio, func() interface{} {
 				var err error
-				if tq.cacheDir.Exists(ti) {
+				if tq.cacheDir.Locate(ti) != "" {
 					err = nil
 					// Lazy Touch logic could go here:
 					// existingPath := tq.cacheDir.Locate(ti)
@@ -102,7 +102,7 @@ func (tq *ThumbnailQueue) Enqueue(prio uint, ti *ThumbInfo) *MaybeError {
 				}
 				tq.lock.Lock()
 				defer tq.lock.Unlock()
-				delete(tq.inQueue, ti.Id())
+				delete(tq.inQueue, ti.String())
 				me.signal(err)
 				return err
 			})
