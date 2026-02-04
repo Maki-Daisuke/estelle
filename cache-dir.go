@@ -39,7 +39,7 @@ func NewCacheDir(path string) (*CacheDir, error) {
 	return &CacheDir{path: abs_path}, nil
 }
 
-func (cdir *CacheDir) CreateFile(ti *ThumbInfo) (io.WriteCloser, error) {
+func (cdir *CacheDir) CreateFile(ti ThumbInfo) (io.WriteCloser, error) {
 	path := cdir.ThumbPath(ti)
 	dir := filepath.Dir(path)
 	err := os.MkdirAll(dir, 0755)
@@ -53,14 +53,14 @@ func (cdir *CacheDir) CreateFile(ti *ThumbInfo) (io.WriteCloser, error) {
 	return file, nil
 }
 
-func (cdir *CacheDir) ThumbPath(ti *ThumbInfo) string {
+func (cdir *CacheDir) ThumbPath(ti ThumbInfo) string {
 	id := ti.String()
 	return filepath.Join(cdir.path, id[:2], id[2:4], id)
 }
 
 // Locate returns the absolute path to the cache file for the given ThumbInfo.
 // It returns an empty string if the cache file does not exist.
-func (cdir *CacheDir) Locate(ti *ThumbInfo) string {
+func (cdir *CacheDir) Locate(ti ThumbInfo) string {
 	path := cdir.ThumbPath(ti)
 	_, err := os.Stat(path)
 	if err != nil {

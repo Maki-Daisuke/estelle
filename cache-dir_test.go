@@ -29,7 +29,7 @@ func TestCacheDirSaveAs(t *testing.T) {
 		t.Error(err)
 	}
 	defer os.RemoveAll("tests/cache")
-	thumbInfo, err := NewThumbInfoFromFile(fileName, SizeFromUint(480, 480), ModeFill, FMT_JPG)
+	thumbInfo, err := ThumbInfoFromFile(fileName, SizeFromUint(480, 480), ModeFill, FMT_JPG)
 	if err != nil {
 		t.Error(err)
 	}

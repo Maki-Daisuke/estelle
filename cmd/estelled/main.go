@@ -50,8 +50,7 @@ func main() {
 	}
 
 	router := mux.NewRouter()
-	// TODO: implement handleGet
-	router.HandleFunc("/get", handleQueue).
+	router.HandleFunc("/get", handleGet).
 		Methods("GET", "POST")
 	router.HandleFunc("/queue", handleQueue).
 		Methods("GET", "POST")
@@ -87,6 +86,25 @@ func parseBytes(s string) (int64, error) {
 	return val * unit, nil
 }
 
+func handleGet(res http.ResponseWriter, req *http.Request) {
+	ti, err := thumbInfoFromReq(req)
+	if err != nil {
+		if os.IsNotExist(err) {
+			res.WriteHeader(404)
+			res.Write([]byte("Not found"))
+			return
+		}
+		panic(err)
+	}
+	c := estelle.Enqueue(ti)
+	err = <-c
+	if err != nil {
+		panic(err)
+	}
+	res.WriteHeader(200)
+	res.Write([]byte(estelle.ThumbPath(ti)))
+}
+
 func handleQueue(res http.ResponseWriter, req *http.Request) {
 	ti, err := thumbInfoFromReq(req)
 	if err != nil {
@@ -97,31 +115,23 @@ func handleQueue(res http.ResponseWriter, req *http.Request) {
 		}
 		panic(err)
 	}
-	if estelle.Exists(ti) {
+	c := estelle.Enqueue(ti)
+	// Does not wait for the thumbnail to be created.
+	select {
+	case err, ok := <-c:
+		if !ok && err != nil {
+			panic(err)
+		}
 		res.WriteHeader(200)
-		return
+		res.Write([]byte(estelle.ThumbPath(ti)))
+	default:
+		res.WriteHeader(202) // Accepted
 	}
-	if !estelle.IsInQueue(ti) {
-		estelle.Enqueue(5, ti)
-	}
-	res.WriteHeader(202) // Accepted
 }
 
-func findOrMakeThumbFromReq(req *http.Request) (string, *ThumbInfo, error) {
-	ti, err := thumbInfoFromReq(req)
-	if err != nil {
-		return "", nil, err
-	}
-	path, err := estelle.Get(2, ti)
-	if err != nil {
-		return "", nil, err
-	}
-	return path, ti, nil
-}
-
-func thumbInfoFromReq(req *http.Request) (*ThumbInfo, error) {
+func thumbInfoFromReq(req *http.Request) (ThumbInfo, error) {
 	if !(len(req.URL.Query()["source"]) > 0) {
-		return nil, fmt.Errorf(`"source" is required`)
+		return ThumbInfo{}, fmt.Errorf(`"source" is required`)
 	}
 	source := req.URL.Query()["source"][0]
 	if source != "" && source[0] != '/' {
@@ -130,7 +140,7 @@ func thumbInfoFromReq(req *http.Request) (*ThumbInfo, error) {
 	size := parseQuerySize(req.URL.Query()["size"])
 	mode := parseQueryMode(req.URL.Query()["mode"])
 	format := parseQueryFormat(req.URL.Query()["format"])
-	return NewThumbInfoFromFile(source, size, mode, format)
+	return ThumbInfoFromFile(source, size, mode, format)
 }
 
 func parseQuerySize(query []string) Size {

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os/exec"
+	"path/filepath"
 )
 
 type ThumbInfo struct {
@@ -16,14 +17,18 @@ type ThumbInfo struct {
 	format Format // File format (extension) of this thumbnail
 }
 
-func NewThumbInfoFromFile(path string, size Size, mode Mode, format Format) (*ThumbInfo, error) {
-	hash, err := HashFromFile(path)
+func ThumbInfoFromFile(path string, size Size, mode Mode, format Format) (ThumbInfo, error) {
+	absPath, err := filepath.Abs(path)
 	if err != nil {
-		return nil, err
+		return ThumbInfo{}, err
 	}
-	return &ThumbInfo{
+	hash, err := HashFromFile(absPath)
+	if err != nil {
+		return ThumbInfo{}, err
+	}
+	return ThumbInfo{
 		id:     fmt.Sprintf("%s-%s-%s.%s", hash, size, mode, format),
-		source: path,
+		source: absPath,
 		hash:   hash,
 		size:   size,
 		mode:   mode,
@@ -31,18 +36,11 @@ func NewThumbInfoFromFile(path string, size Size, mode Mode, format Format) (*Th
 	}, nil
 }
 
-func (ti *ThumbInfo) String() string {
+func (ti ThumbInfo) String() string {
 	return ti.id
 }
 
-func (ti *ThumbInfo) CanMake() bool {
-	return ti.source != ""
-}
-
-func (ti *ThumbInfo) Make(out io.WriteCloser) error {
-	if !ti.CanMake() {
-		return NewNoSourceError(ti)
-	}
+func (ti ThumbInfo) Make(out io.WriteCloser) error {
 	params := ti.prepareMagickArgs()
 	cmd := exec.Command("convert", params...)
 	cmd.Stdout = out
@@ -56,7 +54,7 @@ func (ti *ThumbInfo) Make(out io.WriteCloser) error {
 	return nil
 }
 
-func (ti *ThumbInfo) prepareMagickArgs() []string {
+func (ti ThumbInfo) prepareMagickArgs() []string {
 	args := []string{ti.source}
 	switch ti.mode {
 	case ModeFill:
@@ -81,24 +79,4 @@ func (ti *ThumbInfo) prepareMagickArgs() []string {
 	}
 	args = append(args, ti.format.String()+":-") // explicitly specify image format
 	return args
-}
-
-type InvalidIdError struct {
-	error
-}
-
-func NewInvalidIdError(e error) InvalidIdError {
-	return InvalidIdError{e}
-}
-
-type NoSourceError struct {
-	*ThumbInfo
-}
-
-func NewNoSourceError(ti *ThumbInfo) NoSourceError {
-	return NoSourceError{ti}
-}
-
-func (e NoSourceError) Error() string {
-	return fmt.Sprintf("this ThumbInfo does not have source file: %s", e.ThumbInfo.String())
 }
