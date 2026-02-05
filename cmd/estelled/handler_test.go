@@ -56,6 +56,9 @@ func TestCacheIntegration(t *testing.T) {
 		t.Fatal(errInit)
 	}
 
+	// Set allowedDirs global for testing
+	allowedDirs = []string{tempCache}
+
 	// Setup Router
 	router := mux.NewRouter()
 	router.HandleFunc("/queue", handleQueue).Methods("GET", "POST")

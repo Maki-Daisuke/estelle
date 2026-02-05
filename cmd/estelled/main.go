@@ -2,40 +2,61 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"syscall"
 
 	. "github.com/Maki-Daisuke/estelle"
 
+	"github.com/caarlos0/env/v11"
 	"github.com/codegangsta/negroni"
 	"github.com/gorilla/mux"
-	flags "github.com/jessevdk/go-flags"
 )
 
-var opts struct {
-	Port        uint    `short:"p" long:"port" default:"1186" description:"Port number to listen"`
-	CacheDir    string  `short:"d" long:"cache-dir" default:"./estelled-cache" description:"Directory to store cache data"`
-	Expires     uint    `short:"E" long:"expires" default:"0" description:"How many minutes to keep thumbnail caches from its last access time (zero means no expiration)"`
-	Limit       string  `short:"L" long:"limit" default:"1GB" description:"How much disk space can be consumed to keep thumbnail cache (e.g. 100MB, 1GB)"`
-	GCHighRatio float64 `long:"gc-high-ratio" default:"0.90" description:"The threshold ratio of cache usage to start Garbage Collection"`
-	GCLowRatio  float64 `long:"gc-low-ratio" default:"0.75" description:"The target ratio of cache usage to stop Garbage Collection"`
+var config struct {
+	Addr        string  `env:"ESTELLE_ADDR" envDefault:":1186"`
+	AllowedDirs string  `env:"ESTELLE_ALLOWED_DIRS"`
+	CacheDir    string  `env:"ESTELLE_CACHE_DIR" envDefault:"./estelled-cache"`
+	Expires     uint    `env:"ESTELLE_EXPIRES" envDefault:"0"`
+	Limit       string  `env:"ESTELLE_LIMIT" envDefault:"1GB"`
+	GCHighRatio float64 `env:"ESTELLE_GC_HIGH_RATIO" envDefault:"0.90"`
+	GCLowRatio  float64 `env:"ESTELLE_GC_LOW_RATIO" envDefault:"0.75"`
 }
 
 var estelle *Estelle
+var allowedDirs []string
+
+type ForbiddenError struct {
+	msg string
+}
+
+func (e ForbiddenError) Error() string { return e.msg }
 
 func main() {
-	_, err := flags.Parse(&opts)
-	if err != nil {
-		os.Exit(1)
+	if err := env.Parse(&config); err != nil {
+		log.Fatalf("Failed to parse env: %v", err)
 	}
 
-	limitBytes, err := parseBytes(opts.Limit)
+	if config.AllowedDirs == "" {
+		log.Fatal("ESTELLE_ALLOWED_DIRS is required")
+	}
+	allowedDirs = filepath.SplitList(config.AllowedDirs)
+	for i, dir := range allowedDirs {
+		abs, err := filepath.Abs(dir)
+		if err != nil {
+			log.Fatalf("Failed to get absolute path for %s: %v", dir, err)
+		}
+		allowedDirs[i] = abs + "/"
+	}
+
+	limitBytes, err := parseBytes(config.Limit)
 	if err != nil {
 		log.Fatalf("Invalid limit format: %v", err)
 	}
@@ -44,7 +65,7 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	estelle, err = New(ctx, opts.CacheDir, limitBytes, opts.GCHighRatio, opts.GCLowRatio)
+	estelle, err = New(ctx, config.CacheDir, limitBytes, config.GCHighRatio, config.GCLowRatio)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -57,7 +78,7 @@ func main() {
 
 	n := negroni.New(negroni.NewRecovery(), negroni.NewLogger())
 	n.UseHandler(router)
-	n.Run(fmt.Sprintf(":%d", opts.Port))
+	n.Run(config.Addr)
 }
 
 func parseBytes(s string) (int64, error) {
@@ -94,6 +115,11 @@ func handleGet(res http.ResponseWriter, req *http.Request) {
 			res.Write([]byte("Not found"))
 			return
 		}
+		if errors.Is(err, ForbiddenError{}) {
+			res.WriteHeader(http.StatusForbidden)
+			res.Write([]byte(err.Error()))
+			return
+		}
 		panic(err)
 	}
 	c := estelle.Enqueue(ti)
@@ -111,6 +137,11 @@ func handleQueue(res http.ResponseWriter, req *http.Request) {
 		if os.IsNotExist(err) {
 			res.WriteHeader(404)
 			res.Write([]byte("Not found"))
+			return
+		}
+		if errors.Is(err, ForbiddenError{}) {
+			res.WriteHeader(http.StatusForbidden)
+			res.Write([]byte(err.Error()))
 			return
 		}
 		panic(err)
@@ -137,6 +168,19 @@ func thumbInfoFromReq(req *http.Request) (ThumbInfo, error) {
 	if source != "" && source[0] != '/' {
 		source = "/" + source
 	}
+	source = filepath.Clean(source)
+
+	allowed := false
+	for _, dir := range allowedDirs {
+		if strings.HasPrefix(source, dir) {
+			allowed = true
+			break
+		}
+	}
+	if !allowed {
+		return ThumbInfo{}, ForbiddenError{msg: fmt.Sprintf("Access denied: %s is not in allowed directories", source)}
+	}
+
 	size := parseQuerySize(req.URL.Query()["size"])
 	mode := parseQueryMode(req.URL.Query()["mode"])
 	format := parseQueryFormat(req.URL.Query()["format"])
