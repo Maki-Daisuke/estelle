@@ -186,10 +186,12 @@ func (gc *GarbageCollector) evictOneBatch(rng *rand.Rand) int64 { // Randomly se
 	// This simplifies things. I will use ModTime.
 
 	oldest := entries[0]
-	oldestTime := getAtime(oldest)
+	oldestInfo, _ := oldest.Info()
+	oldestTime := GetAtime(oldestInfo)
 	for _, de := range entries[1:] {
 		if de.Type().IsRegular() {
-			t := getAtime(de)
+			fi, _ := de.Info()
+			t := GetAtime(fi)
 			if t.Before(oldestTime) {
 				oldest = de
 				oldestTime = t

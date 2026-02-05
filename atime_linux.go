@@ -9,11 +9,7 @@ import (
 	"time"
 )
 
-func getAtime(de os.DirEntry) time.Time {
-	fi, err := de.Info()
-	if err != nil {
-		panic(fmt.Errorf("cannot get file info from dirent: %w", err))
-	}
+func GetAtime(fi os.FileInfo) time.Time {
 	sys, ok := fi.Sys().(*syscall.Stat_t)
 	if !ok {
 		panic(fmt.Errorf("cannot cast to Stat_t: %T", fi.Sys()))

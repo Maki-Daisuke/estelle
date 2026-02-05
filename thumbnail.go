@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"time"
 )
 
 // ThumbInfo holds the information about a thumbnail.
@@ -93,7 +94,18 @@ func (ti ThumbInfo) Exists() bool {
 	if err != nil {
 		return false
 	}
-	return st.Mode().IsRegular()
+	if !st.Mode().IsRegular() {
+		return false
+	}
+	// Lazy Touch: Update timestamp if it's older than 1 hour.
+	// This ensures that frequently accessed files are not collected by GC.
+	now := time.Now()
+	// Use GetAtime to get access time (platform dependent).
+	// On Linux, this will return Atime. On Windows, it will fallback to ModTime.
+	if now.Sub(GetAtime(st)) > 24*time.Hour {
+		os.Chtimes(ti.path, now, now)
+	}
+	return true
 }
 
 func (ti ThumbInfo) Make() error {
