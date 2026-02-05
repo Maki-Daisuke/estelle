@@ -102,7 +102,7 @@ func handleGet(res http.ResponseWriter, req *http.Request) {
 		panic(err)
 	}
 	res.WriteHeader(200)
-	res.Write([]byte(estelle.ThumbPath(ti)))
+	res.Write([]byte(ti.Path()))
 }
 
 func handleQueue(res http.ResponseWriter, req *http.Request) {
@@ -123,7 +123,7 @@ func handleQueue(res http.ResponseWriter, req *http.Request) {
 			panic(err)
 		}
 		res.WriteHeader(200)
-		res.Write([]byte(estelle.ThumbPath(ti)))
+		res.Write([]byte(ti.Path()))
 	default:
 		res.WriteHeader(202) // Accepted
 	}
@@ -140,7 +140,7 @@ func thumbInfoFromReq(req *http.Request) (ThumbInfo, error) {
 	size := parseQuerySize(req.URL.Query()["size"])
 	mode := parseQueryMode(req.URL.Query()["mode"])
 	format := parseQueryFormat(req.URL.Query()["format"])
-	return ThumbInfoFromFile(source, size, mode, format)
+	return estelle.NewThumbInfo(source, size, mode, format)
 }
 
 func parseQuerySize(query []string) Size {

@@ -16,14 +16,6 @@ type Fingerprint struct {
 	MtimeNsec int64
 }
 
-func HashFromFile(path string) (Hash, error) {
-	fp, err := FingerprintFromFile(path)
-	if err != nil {
-		return Hash{}, err
-	}
-	return fp.Hash(), nil
-}
-
 func FingerprintFromFile(path string) (Fingerprint, error) {
 	absPath, err := filepath.Abs(path)
 	if err != nil {

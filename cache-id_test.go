@@ -13,7 +13,7 @@ import (
 func TestHash(t *testing.T) {
 	const fileName = "tests/IMG_20141207_201549.jpg"
 
-	id1, err := HashFromFile(fileName)
+	id1, err := FingerprintFromFile(fileName)
 	if err != nil {
 		t.Fatalf("%s", err)
 	}
@@ -23,17 +23,17 @@ func TestHash(t *testing.T) {
 		t.Fatalf("%s", err)
 	}
 
-	id2, err := HashFromFile(fileName)
+	id2, err := FingerprintFromFile(fileName)
 	if err != nil {
 		t.Fatalf("%s", err)
 	}
 
 	if id1 == id2 {
-		t.Errorf("Hash is not changed after touch")
+		t.Errorf("Fingerprint is not changed after touch")
 	}
 
 	// Verify length (SHA1 hex string is 40 chars)
-	if len(id1.String()) != 40 {
-		t.Errorf("Invalid hash length: %d (expected 40)", len(id1.String()))
+	if len(id1.Hash().String()) != 40 {
+		t.Errorf("Invalid fingerprint length: %d (expected 40)", len(id1.Hash().String()))
 	}
 }
