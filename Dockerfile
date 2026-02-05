@@ -1,7 +1,7 @@
 FROM golang:1.25
 
-# Install libvips and imagemagick (convert)
-RUN apt-get update && apt-get install -y libvips-dev imagemagick && rm -rf /var/lib/apt/lists/*
+# Install libvips (vipsthumbnail)
+RUN apt-get update && apt-get install -y libvips-tools && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 

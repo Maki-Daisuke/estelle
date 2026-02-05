@@ -198,24 +198,20 @@ func parseQuerySize(query []string) Size {
 }
 
 func parseQueryMode(query []string) Mode {
-	mode := ""
 	if len(query) > 0 {
-		mode = query[0]
+		m := ModeFromString(query[0])
+		if m != ModeUnknown {
+			return m
+		}
 	}
-	switch mode {
-	default:
-		return ModeFill
-	case "fit":
-		return ModeFit
-	case "shrink":
-		return ModeShrink
-	}
+	return ModeCrop
 }
 
 func parseQueryFormat(query []string) Format {
 	if len(query) > 0 {
-		if format, err := FormatFromString(query[0]); err != nil {
-			return format
+		f := FormatFromString(query[0])
+		if f != FMT_UNKNOWN {
+			return f
 		}
 	}
 	return FMT_JPG

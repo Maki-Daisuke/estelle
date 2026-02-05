@@ -33,7 +33,7 @@ func TestThumbInfoMake(t *testing.T) {
 	}
 	defer os.RemoveAll(baseDir)
 
-	thumbInfo, err := factory.FromFile(fileName, SizeFromUint(480, 480), ModeFill, FMT_JPG)
+	thumbInfo, err := factory.FromFile(fileName, SizeFromUint(480, 480), ModeCrop, FMT_JPG)
 	if err != nil {
 		t.Error(err)
 	}

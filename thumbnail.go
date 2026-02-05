@@ -109,62 +109,54 @@ func (ti ThumbInfo) Exists() bool {
 }
 
 func (ti ThumbInfo) Make() error {
+	// Make sure that sharding directories (cachedir/XX/XX/) exist.
 	dir := filepath.Dir(ti.path)
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return err
 	}
-	// Create a temporary file and output thumbnail into it.
-	// This ensures incomplete file is not recognized as valid thumbnail.
-	// The temporary file is created in the same directory as the target file
-	// to ensure that the temporary file resides on the same file system
-	// as the target file, which is required for os.Rename to work atomically.
-	// Also, we use os.CreateTemp to create a temporary file to avoid race condition.
-	tmp, err := os.CreateTemp(dir, "estelle-thumb-*")
-	if err != nil {
-		return err
-	}
-	params := ti.prepareMagickArgs()
-	cmd := exec.Command("convert", params...)
-	cmd.Stdout = tmp
+	// Generate the thumbnail using a temporary filename and rename it to the target name after completion.
+	// This prevents incomplete (corrupted) thumbnail files from being recognized as valid.
+	// We simply prepend "incomplete_" to the filename. This is sufficient to avoid conflicts
+	// because Estelle.Enqueue() uses singleflight to ensure only one generation process runs at a time.
+	tmpName := filepath.Join(dir, "incomplete_"+filepath.Base(ti.path))
+
+	params := ti.prepareVipsArgs(tmpName)
+	cmd := exec.Command("vipsthumbnail", params...)
+
+	// Capture stderr for debugging
 	stderr := bytes.NewBuffer([]byte{})
 	cmd.Stderr = stderr
-	err = cmd.Run() // block until the command completes.
+
+	err := cmd.Run() // block until the command completes.
 	if err != nil {
-		return fmt.Errorf("%s", stderr.String())
+		return fmt.Errorf("vipsthumbnail failed: %s: %w", stderr.String(), err)
 	}
-	err = tmp.Close()
-	if err != nil {
-		return err
-	}
-	if err := os.Rename(tmp.Name(), ti.path); err != nil {
+
+	if err := os.Rename(tmpName, ti.path); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (ti ThumbInfo) prepareMagickArgs() []string {
+func (ti ThumbInfo) prepareVipsArgs(outputPath string) []string {
+	// vipsthumbnail [flags] sourcefile -o outputfile
 	args := []string{ti.source}
+
+	sizeStr := ti.size.String()
+	// Size logic
+	// vipsthumbnail source.img --size WxH
+	// ModeCrop: --smartcrop=attention
+	// ModeShrink: default
+	// ModeStretch: Postfix "!" to size
 	switch ti.mode {
-	case ModeFill:
-		args = append(args,
-			"-resize", ti.size.String(),
-			"-background", "white",
-			"-gravity", "center",
-			"-extent", ti.size.String(),
-		)
-	case ModeFit:
-		args = append(args,
-			"-resize", ti.size.String()+"^",
-			"-gravity", "center",
-			"-extent", ti.size.String(),
-		)
-	case ModeShrink:
-		args = append(args,
-			"-resize", ti.size.String(),
-		)
-	default:
-		panic(fmt.Sprintf("unknown resize mode (%d)", ti.mode))
+	case ModeCrop:
+		args = append(args, "--smartcrop", "attention")
+	case ModeStretch:
+		sizeStr += "!"
 	}
-	args = append(args, ti.format.String()+":-") // explicitly specify image format
+	args = append(args, "--size", sizeStr)
+
+	args = append(args, "-o", outputPath)
+
 	return args
 }

@@ -16,7 +16,7 @@ func TestLazyTouch(t *testing.T) {
 	}
 	defer os.RemoveAll(baseDir)
 
-	thumbInfo, err := factory.FromFile(fileName, SizeFromUint(100, 100), ModeFill, FMT_JPG)
+	thumbInfo, err := factory.FromFile(fileName, SizeFromUint(100, 100), ModeCrop, FMT_JPG)
 	if err != nil {
 		t.Fatal(err)
 	}
