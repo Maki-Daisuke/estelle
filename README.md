@@ -28,60 +28,75 @@ Estelle relies on specific Linux capabilities to ensure high performance and cor
   * Recommended: ext4, XFS, Btrfs, F2FS (must support nanosecond resolution timestamps)
   * Limited Support: ext3, FAT32/exFAT
     * **Warning**: On file systems without nanosecond timestamp support, modifications made within the same second may be ignored by the cache system.
-* **Library**: `libvips` development headers for building, and shared libraries for running.
+* **Runtime Dependency**: `vipsthumbnail` command
+  * usually part of `libvips-tools` or `libvips-utils` package.
 
 ## How to Install
 
-Since Estelle depends on libvips, install libvips at first. You need
-install libvips with package manager like `apt` or `yum`:
+Since Estelle uses `vipsthumbnail` command to generate thumbnails, you need to install it.
+You can install it with package manager like `apt` or `yum`:
 
-    apt install libvips
+```bash
+apt install libvips-tools
+```
 
 Or, you need to install it from source.
+Estelle just executes `vipsthumbnail` command, so please make sure it is in your `$PATH`.
 
 Estelle is implemented in Go. You need to install [Go tools](http://golang.org/doc/install).
 Then, just get Estelle:
 
-    go install github.com/Maki-Daisuke/estelle/cmd/estelled@latest
+```bash
+go install github.com/Maki-Daisuke/estelle/cmd/estelled@latest
+```
 
 Or, you can clone the repository and build it:
 
-    git clone https://github.com/Maki-Daisuke/estelle.git
-    cd estelle/cmd/estelled
-    go build -o path/to/estelled
+```bash
+git clone https://github.com/Maki-Daisuke/estelle.git
+cd estelle/cmd/estelled
+go build -o path/to/estelled
+```
 
 That's it! Now you have a binary called `estelled`.
 
 ## Run Estelled
 
-    ./estelled /path/to/allowed/images /another/path
-    ./estelled . 
+```bash
+ESTELLE_ALLOWED_DIRS="/path/to/allowed/images:/another/path" ./estelled
+```
 
 This command starts Estelle daemon. It starts listening TCP port specified by
-`--addr` option.
+`ESTELLE_ADDR` environment variable.
 
-You MUST specify one or more directories as positional arguments. Estelle will only allow access to images within these specified directories (and their subdirectories). If no directory is specified, it may fail to start or deny all requests (depending on implementation version).
+You MUST specify at least one directory via `ESTELLE_ALLOWED_DIRS` environment variable. Estelle will only allow access to images within these specified directories (and their subdirectories). If no directory is specified, it will exit with error.
 
-### Command Line Options
+### Configuration (Environment Variables)
 
-You can configure the behavior of the daemon with the following command line options:
+Estelle follows the [Twelve-Factor App](https://12factor.net/config) methodology and stores configuration in environment variables.
 
-* `--addr=<ADDR>` | `-a <ADDR>`
+You can configure the behavior of the daemon with the following environment variables:
+
+* `ESTELLE_ADDR`
   * Network address to listen.
   * Supports TCP (e.g. `:1186`, `127.0.0.1:1186`,  `[::1]:1186`) and UNIX Domain Socket (e.g. `unix:///var/run/estelled.sock`).
   * Default: `:1186`
-* `--cache-dir=<PATH TO DIR>` | `-d <PATH TO DIR>`
+* `ESTELLE_ALLOWED_DIRS`
+  * List of directories to allow access, separated by OS-specific path list separator (e.g. `:` on Linux/Unix, `;` on Windows).
+  * Example (Linux): `/var/images:/home/user/images`
+  * **Required**.
+* `ESTELLE_CACHE_DIR`
   * Directory to cache thumbnails.
   * Default: `$HOME/.cache/estelled`
   * For system-wide configuration, `/var/cache/estelled` is recommended.
-* `--cache-limit=<SIZE>` | `-l <SIZE>`
+* `ESTELLE_CACHE_LIMIT`
   * Maximum size of cache directory. Supports units like `KB`, `MB`, `GB`.
   * Default: `1GB`
-* `--gc-high-ratio=<RATIO>`
+* `ESTELLE_GC_HIGH_RATIO`
   * The threshold ratio of cache usage to start Garbage Collection.
   * Value must be between 0.0 and 1.0.
   * Default: `0.90` (90%)
-* `--gc-low-ratio=<RATIO>`
+* `ESTELLE_GC_LOW_RATIO`
   * The target ratio of cache usage to stop Garbage Collection.
   * Value must be between 0.0 and 1.0.
   * Default: `0.75` (75%)
@@ -91,7 +106,9 @@ You can configure the behavior of the daemon with the following command line opt
 Estelle is a HTTP server, so that you can call it by just sending HTTP request.
 For example:
 
-    curl http://localhost:1186/get?source=/absolute/path/to/image/file&size=400x400
+```bash
+curl http://localhost:1186/get?source=/absolute/path/to/image/file&size=400x400
+```
 
 This will return a single line of string as the response body, that is the file
 path of thumbnail you want.
@@ -111,7 +128,9 @@ An original image is specified by `source` patameter.
 
 For example, if you want thumbnail of `/foo/bar/baz.jpg`, you can request like this:
 
-    curl http://localhost:1186/get?source=/foo/bar/baz.jpg&size=400x300&overflow=fill
+```bash
+curl http://localhost:1186/get?source=/foo/bar/baz.jpg&size=400x300&overflow=fill
+```
 
 Here, `size` specifies thumbnail size and `overflow` specifies how to treat different aspect ratio.
 See "Query Parameters" below for details.
@@ -151,9 +170,9 @@ If the thumbnail already exists, it will return `200 OK` with the path to the th
 
 ## Caching
 
-Estelle caches generated thumbnails in a directory specified by `--cache-dir`, and manages the total size of the cache directory.
+Estelle caches generated thumbnails in a directory specified by `ESTELLE_CACHE_DIR`, and manages the total size of the cache directory.
 
-When the total size exceeds the limit specified by `--cache-limit`, Estelle automatically removes old thumbnails to free up space. This Garbage Collection (GC) uses **Random Sampling LRU (Approximated LRU)** strategy. This means that while it prioritizes removing least recently used files, it relies on random sampling to avoid performance overhead, so strict LRU order is not guaranteed.
+When the total size exceeds the limit specified by `ESTELLE_CACHE_LIMIT`, Estelle automatically removes old thumbnails to free up space. This Garbage Collection (GC) uses **Random Sampling LRU (Approximated LRU)** strategy. This means that while it prioritizes removing least recently used files, it relies on random sampling to avoid performance overhead, so strict LRU order is not guaranteed.
 
 ## Term of Use
 
