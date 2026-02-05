@@ -22,7 +22,8 @@ Estelle relies on specific Linux capabilities to ensure high performance and cor
 
 * **Operating System**: Linux
   * Minimum Kernel version depends on the Go runtime policy (e.g. Linux 3.2+ for Go 1.25).
-  * Windows and macOS are NOT supported.
+  * Limited Support: Windows, macOS (and other non-Linux systems)
+    * **Warning**: On non-Linux systems, GC relies on `mtime` (Modification Time) instead of `atime` (Access Time) because `atime` is not reliably available or updated. This means cache eviction might not perfectly follow LRU (Least Recently Used) strategy.
 * **Go Runtime**: 1.25 or later
 * **File System**:
   * Recommended: ext4, XFS, Btrfs, F2FS (must support nanosecond resolution timestamps)
@@ -87,7 +88,7 @@ You can configure the behavior of the daemon with the following environment vari
   * **Required**.
 * `ESTELLE_CACHE_DIR`
   * Directory to cache thumbnails.
-  * Default: `$HOME/.cache/estelled`
+  * Default: `$HOME/.cache/estelled` (on Linux/Mac) or `%USERPROFILE%\.cache\estelled` (on Windows)
   * For system-wide configuration, `/var/cache/estelled` is recommended.
 * `ESTELLE_CACHE_LIMIT`
   * Maximum size of cache directory. Supports units like `KB`, `MB`, `GB`.

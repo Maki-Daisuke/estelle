@@ -23,9 +23,8 @@ import (
 var config struct {
 	Addr        string  `env:"ESTELLE_ADDR" envDefault:":1186"`
 	AllowedDirs string  `env:"ESTELLE_ALLOWED_DIRS"`
-	CacheDir    string  `env:"ESTELLE_CACHE_DIR" envDefault:"./estelled-cache"`
-	Expires     uint    `env:"ESTELLE_EXPIRES" envDefault:"0"`
-	Limit       string  `env:"ESTELLE_LIMIT" envDefault:"1GB"`
+	CacheDir    string  `env:"ESTELLE_CACHE_DIR"`
+	Limit       string  `env:"ESTELLE_CACHE_LIMIT" envDefault:"1GB"`
 	GCHighRatio float64 `env:"ESTELLE_GC_HIGH_RATIO" envDefault:"0.90"`
 	GCLowRatio  float64 `env:"ESTELLE_GC_LOW_RATIO" envDefault:"0.75"`
 }
@@ -42,6 +41,14 @@ func (e ForbiddenError) Error() string { return e.msg }
 func main() {
 	if err := env.Parse(&config); err != nil {
 		log.Fatalf("Failed to parse env: %v", err)
+	}
+
+	if config.CacheDir == "" {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			log.Fatalf("Failed to get user home dir: %v", err)
+		}
+		config.CacheDir = filepath.Join(home, ".cache", "estelled")
 	}
 
 	if config.AllowedDirs == "" {

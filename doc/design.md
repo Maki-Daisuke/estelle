@@ -37,6 +37,7 @@ type Fingerprint struct {
 ```
 
 > **Note:** Linuxでのナノ秒精度取得を推奨する。非対応ファイルシステム（FAT32等）では秒単位の変化しか検知できないため、短時間での連続更新時にキャッシュ更新漏れのリスクがあるが、動作自体は許容する。
+> また、Windows等の非Linux環境では `atime` の取得が困難なため、GCは `mtime` (最終更新日時) を `atime` の代替として使用する (Approximated LRU)。
 
 ### 3.2. ID生成アルゴリズム
 
