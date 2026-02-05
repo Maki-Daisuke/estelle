@@ -115,9 +115,9 @@ func handleGet(res http.ResponseWriter, req *http.Request) {
 			res.Write([]byte("Not found"))
 			return
 		}
-		if errors.Is(err, ForbiddenError{}) {
+		if errors.As(err, &ForbiddenError{}) {
 			res.WriteHeader(http.StatusForbidden)
-			res.Write([]byte(err.Error()))
+			res.Write([]byte("Access denied"))
 			return
 		}
 		panic(err)
@@ -139,9 +139,9 @@ func handleQueue(res http.ResponseWriter, req *http.Request) {
 			res.Write([]byte("Not found"))
 			return
 		}
-		if errors.Is(err, ForbiddenError{}) {
+		if errors.As(err, &ForbiddenError{}) {
 			res.WriteHeader(http.StatusForbidden)
-			res.Write([]byte(err.Error()))
+			res.Write([]byte("Access denied"))
 			return
 		}
 		panic(err)
