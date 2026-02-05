@@ -129,10 +129,10 @@ An original image is specified by `source` patameter.
 For example, if you want thumbnail of `/foo/bar/baz.jpg`, you can request like this:
 
 ```bash
-curl http://localhost:1186/get?source=/foo/bar/baz.jpg&size=400x300&overflow=fill
+curl http://localhost:1186/get?source=/foo/bar/baz.jpg&size=400x300&mode=crop
 ```
 
-Here, `size` specifies thumbnail size and `overflow` specifies how to treat different aspect ratio.
+Here, `size` specifies thumbnail size and `mode` specifies how to treat different aspect ratio.
 See "Query Parameters" below for details.
 
 #### `/queue`
@@ -156,13 +156,13 @@ If the thumbnail already exists, it will return `200 OK` with the path to the th
 * `size`
   * Size of the generated thumbnail
   * Default: `85x85`
-* `overflow`
-  * When the aspect ratio of `size` differs from the one of the original file, this option specifies how to generate the thumbnail.
+* `mode`
+  * Specifies how to resize/crop the image to match the `size`.
   * One of these:
-    * `fill`: resizes the image with regarding `size` as maximum width and height, and fills background with white.
-    * `fit`: resizes the image with regarding `size` as minimum width and height, and cut out extra edges as it fits the specified `size`.
-    * `shrink`: resizes the image with regarding `size` as maximum width and height. The resulted thumbnail is smaller than `size`.
-  * Default: `fill`
+    * `crop`: (Default) Resizes the image to fill the specified `size` and crops excess. Smart crop (using `vipsthumbnail --smartcrop`) is applied to keep interesting parts.
+    * `shrink`: Resizes the image to fit within the `size`. Aspect ratio is preserved. Result may be smaller than `size`.
+    * `stretch`: Forces the image to exactly match `size` by ignoring aspect ratio.
+  * Default: `crop`
 * `format`
   * Image format of the output thumbnail
   * One of: `jpg`, `png`, `webp`
