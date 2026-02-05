@@ -93,21 +93,19 @@ func (gc *GarbageCollector) RunGC(ctx context.Context) {
 	}
 }
 
-func (gc *GarbageCollector) evictOneBatch(rng *rand.Rand) int64 { // Randomly select a shard: root/head2/next2
+func (gc *GarbageCollector) evictOneBatch(rng *rand.Rand) int64 {
 	// Random Sampling LRU
-	// 1. Pick random subdirectories
-	// 2. Scan files in them
-	// 3. Delete oldest accessed until usage < lowLimit
+	// 1. Pick a random subdirectory
+	// 2. Scan files in it
+	// 3. Delete the oldest accessed file
 
 	// head2: 00-ff
 	// next2: 00-ff
 
-	// To be efficient, we might try to pick existing directories.
+	// To be efficient, we try to pick existing directories.
 	// Since we don't track directory list, we can just try random hex.
 	// But scanning empty dirs is wasteful.
-	// Alternatively, ReadDir of root, pick random, ReadDir of that, pick random.
-
-	// Simple strategy: List root dirs, pick one. List its subdirs, pick one. List files, pick oldest.
+	// Alternatively, ReadDir of root, pick one, ReadDir of that, pick one.
 	root, err := os.Open(gc.dir)
 	if err != nil {
 		return 0
@@ -159,31 +157,6 @@ func (gc *GarbageCollector) evictOneBatch(rng *rand.Rand) int64 { // Randomly se
 		os.Remove(n2Path)
 		return 0
 	}
-
-	// Find oldest Atime (using ModTime as proxy if Atime not available,
-	// BUT design says Atime.
-	// Go os.FileInfo doesn't expose Atime directly in platform-independent way.
-	// However, estelle.go and design implies checking Atime.
-	// Since we are moving to platform-independent (or Linux target),
-	// we will try to use AccessTime if possible, or fallback to ModTime?
-	// The design says: "OSの relatime / noatime 設定に依存せずLRUを機能させるため、アプリケーション側でAtimeを管理する。"
-	// "キャッシュヒット時... os.Chtimes を実行してAtimeを更新する" -> This updates ModTime AND AccessTime.
-	// So ModTime might be updated too if we use Chtimes(now, now).
-	// BUT if file content doesn't change, we shouldn't change ModTime ideally?
-	// Chtimes changes both.
-	// If we use Chtimes to update Atime, ModTime also updates usually unless we preserve it.
-	// But `os.Chtimes` takes `atime` and `mtime`. We can set `mtime` to old value!
-
-	// So, we rely on `Atime`.
-	// For now, let's pick the file with oldest ModTime or Atime if available.
-	// Since I want to compile on Windows (dev env), Atime access is tricky without syscall.
-	// Design says: "Most implementations use ModTime if Atime not reliable" - wait, no.
-	// Design says: "Approximated LRU... 最も Atime (最終アクセス時刻) が古いファイルを削除する"
-
-	// I will just use ModTime for now for portability, and assume Chtimes updates ModTime (or I maintain ModTime and update Atime).
-	// If I use `os.Chtimes(now, now)`, ModTime updates.
-	// Then ModTime == Last Access Time (mostly).
-	// This simplifies things. I will use ModTime.
 
 	oldest := entries[0]
 	oldestInfo, _ := oldest.Info()
