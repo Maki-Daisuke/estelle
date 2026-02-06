@@ -88,9 +88,15 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	estelle, err = New(config.CacheDir, limitBytes, config.GCHighRatio, config.GCLowRatio, config.WorkerPoolSize, config.TaskBufferSize, func(v interface{}) {
-		slog.Error("Worker Panic", "panic", v, "stack", string(debug.Stack()))
-	})
+	estelle, err = New(config.CacheDir,
+		WithCacheLimit(limitBytes),
+		WithGCRatio(config.GCHighRatio, config.GCLowRatio),
+		WithWorkers(config.WorkerPoolSize),
+		WithBufferSize(config.TaskBufferSize),
+		WithPanicHandler(func(v interface{}) {
+			slog.Error("Worker Panic", "panic", v, "stack", string(debug.Stack()))
+		}),
+	)
 	if err != nil {
 		slog.Error("Failed to initialize estelle", "error", err)
 		os.Exit(1)

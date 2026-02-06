@@ -16,25 +16,81 @@ type Estelle struct {
 	gc     *GarbageCollector
 }
 
-func New(path string, cacheLimit int64, gcHighRatio, gcLowRatio float64, workerNum, bufferSize int, panicHandler func(interface{})) (*Estelle, error) {
+type config struct {
+	cacheLimit   int64
+	gcHighRatio  float64
+	gcLowRatio   float64
+	workerNum    int
+	bufferSize   int
+	panicHandler func(interface{})
+}
+
+type Option func(*config)
+
+func WithCacheLimit(limit int64) Option {
+	return func(c *config) {
+		c.cacheLimit = limit
+	}
+}
+
+func WithGCRatio(high, low float64) Option {
+	return func(c *config) {
+		c.gcHighRatio = high
+		c.gcLowRatio = low
+	}
+}
+
+func WithWorkers(n int) Option {
+	return func(c *config) {
+		c.workerNum = n
+	}
+}
+
+func WithBufferSize(size int) Option {
+	return func(c *config) {
+		c.bufferSize = size
+	}
+}
+
+func WithPanicHandler(h func(interface{})) Option {
+	return func(c *config) {
+		c.panicHandler = h
+	}
+}
+
+func New(path string, opts ...Option) (*Estelle, error) {
 	dir, err := NewThumbInfoFactory(path)
 	if err != nil {
 		return nil, err
 	}
-	opts := []filiq.Option{
-		filiq.WithLIFO(),
-		filiq.WithWorkers(workerNum),
-		filiq.WithBufferSize(bufferSize),
+
+	cfg := config{
+		// Default values
+		cacheLimit:  1024 * 1024 * 1024, // 1GB default
+		gcHighRatio: 0.90,
+		gcLowRatio:  0.75,
+		workerNum:   1, // Safe default
+		bufferSize:  1024,
 	}
-	if panicHandler != nil {
-		opts = append(opts, filiq.WithPanicHandler(panicHandler))
+
+	for _, opt := range opts {
+		opt(&cfg)
+	}
+
+	filiqOpts := []filiq.Option{
+		filiq.WithLIFO(),
+		filiq.WithWorkers(cfg.workerNum),
+		filiq.WithBufferSize(cfg.bufferSize),
+	}
+	if cfg.panicHandler != nil {
+		filiqOpts = append(filiqOpts, filiq.WithPanicHandler(cfg.panicHandler))
 	}
 
 	return &Estelle{
 		dir:    dir,
-		runner: filiq.New(opts...),
+		runner: filiq.New(filiqOpts...),
 		sf:     new(singleflight.Group),
-		gc:     NewGarbageCollector(dir.BaseDir(), cacheLimit, gcHighRatio, gcLowRatio),
+		gc:     NewGarbageCollector(dir.BaseDir(), cfg.cacheLimit, cfg.gcHighRatio, cfg.gcLowRatio),
 	}, nil
 }
 

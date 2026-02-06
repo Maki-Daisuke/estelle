@@ -46,7 +46,10 @@ func TestCacheIntegration(t *testing.T) {
 	f.Close()
 
 	var errInit error
-	estelle, errInit = New(tempCache, 1024*1024*100, 0.9, 0.75, 2, 128, nil)
+	estelle, errInit = New(tempCache,
+		WithWorkers(2),
+		WithBufferSize(128),
+	)
 	if errInit != nil {
 		t.Fatal(errInit)
 	}
