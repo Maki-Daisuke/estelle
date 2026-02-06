@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -20,7 +20,7 @@ import (
 
 func TestCacheIntegration(t *testing.T) {
 	// Setup temporary cache directory
-	tempCache, err := ioutil.TempDir("", "estelle-test-cache")
+	tempCache, err := os.MkdirTemp("", "estelle-test-cache")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -107,7 +107,7 @@ Loop:
 			}
 			if resp.StatusCode == http.StatusOK {
 				// We expect the path in body (per user expectation/doc update, although code might miss it)
-				body, _ := ioutil.ReadAll(resp.Body)
+				body, _ := io.ReadAll(resp.Body)
 				resp.Body.Close()
 				thumbPath1 = string(body)
 				break Loop
@@ -136,7 +136,7 @@ Loop:
 	if resp2.StatusCode != http.StatusOK {
 		t.Errorf("Expected 200 OK for cached item, got %d", resp2.StatusCode)
 	}
-	body2, _ := ioutil.ReadAll(resp2.Body)
+	body2, _ := io.ReadAll(resp2.Body)
 	resp2.Body.Close()
 	thumbPath2 := string(body2)
 
@@ -192,7 +192,7 @@ Loop2:
 				t.Fatal(err)
 			}
 			if resp.StatusCode == http.StatusOK {
-				body, _ := ioutil.ReadAll(resp.Body)
+				body, _ := io.ReadAll(resp.Body)
 				resp.Body.Close()
 				thumbPath3 = string(body)
 				break Loop2
