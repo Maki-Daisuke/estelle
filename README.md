@@ -182,6 +182,6 @@ When the total size exceeds the limit specified by `ESTELLE_CACHE_LIMIT`, Estell
 
 ## Term of Use
 
-This software is distributed under the revised BSD License.
+This software is distributed under the MIT License.
 
 Copyright (c) 2014-2026, Daisuke (yet another) Maki All rights reserved.
