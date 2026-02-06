@@ -47,7 +47,7 @@ Estelle is implemented in Go. You need to install [Go tools](http://golang.org/d
 Then, just get Estelle:
 
 ```bash
-go install github.com/Maki-Daisuke/estelle/cmd/estelled@latest
+go install github.com/Maki-Daisuke/estelle/v2/cmd/estelled@latest
 ```
 
 Or, you can clone the repository and build it:

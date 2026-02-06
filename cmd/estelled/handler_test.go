@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	. "github.com/Maki-Daisuke/estelle"
+	. "github.com/Maki-Daisuke/estelle/v2"
 
 	"image"
 	"image/color"

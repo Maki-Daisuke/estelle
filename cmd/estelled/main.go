@@ -16,7 +16,7 @@ import (
 	"syscall"
 	"time"
 
-	. "github.com/Maki-Daisuke/estelle"
+	. "github.com/Maki-Daisuke/estelle/v2"
 
 	"github.com/caarlos0/env/v11"
 )

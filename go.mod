@@ -1,4 +1,4 @@
-module github.com/Maki-Daisuke/estelle
+module github.com/Maki-Daisuke/estelle/v2
 
 go 1.25.6
 
