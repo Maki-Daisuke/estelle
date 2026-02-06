@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"syscall"
@@ -77,7 +78,9 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	estelle, err = New(config.CacheDir, limitBytes, config.GCHighRatio, config.GCLowRatio)
+	estelle, err = New(config.CacheDir, limitBytes, config.GCHighRatio, config.GCLowRatio, func(v interface{}) {
+		slog.Error("Worker Panic", "panic", v, "stack", string(debug.Stack()))
+	})
 	if err != nil {
 		slog.Error("Failed to initialize estelle", "error", err)
 		os.Exit(1)
