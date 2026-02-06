@@ -8,32 +8,33 @@ import (
 type Mode uint
 
 const (
-	ModeFill   Mode = iota + 1
-	ModeFit    Mode = iota + 1
-	ModeShrink Mode = iota + 1
+	ModeUnknown Mode = iota
+	ModeCrop
+	ModeShrink
+	ModeStretch
 )
 
-func ModeFromString(s string) (Mode, error) {
+func ModeFromString(s string) Mode {
 	switch strings.ToLower(s) {
-	case "fill":
-		return ModeFill, nil
-	case "fit":
-		return ModeFit, nil
+	case "crop":
+		return ModeCrop
 	case "shrink":
-		return ModeShrink, nil
+		return ModeShrink
+	case "stretch":
+		return ModeStretch
 	default:
-		return ModeFill, fmt.Errorf("invalid mode string")
+		return ModeUnknown
 	}
 }
 
 func (m Mode) String() string {
 	switch m {
-	case ModeFill:
-		return "fill"
-	case ModeFit:
-		return "fit"
+	case ModeCrop:
+		return "crop"
 	case ModeShrink:
 		return "shrink"
+	case ModeStretch:
+		return "stretch"
 	default:
 		panic(fmt.Sprintf("unknown Mode value (%d)", m))
 	}

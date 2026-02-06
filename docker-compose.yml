@@ -1,0 +1,18 @@
+version: "3"
+services:
+  estelle:
+    build: .
+    volumes:
+      - .:/app
+      - ./test_cache_output:/cache
+    ports:
+      - "1186:1186"
+    command: ["estelled"]
+    environment:
+      - ESTELLE_ADDR=:1186
+      - ESTELLE_CACHE_DIR=/cache
+      - ESTELLE_CACHE_LIMIT=100MB
+      - ESTELLE_ALLOWED_DIRS=/app/tests
+      - ESTELLE_WORKERS=4
+      - ESTELLE_QUEUE_SIZE=100
+

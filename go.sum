@@ -1,0 +1,6 @@
+github.com/Maki-Daisuke/go-filiq v0.3.0 h1:J3xsWZmnRV7hf7WW88A7r+G5zWZu/IlmDIiQ9M3mLBM=
+github.com/Maki-Daisuke/go-filiq v0.3.0/go.mod h1:nvvcSzfzgmZ223TBQjD4mmkLDhYrJzXzc09w2rC1WEE=
+github.com/caarlos0/env/v11 v11.3.1 h1:cArPWC15hWmEt+gWk7YBi7lEXTXCvpaSdCiZE2X5mCA=
+github.com/caarlos0/env/v11 v11.3.1/go.mod h1:qupehSf/Y0TUTsxKywqRt/vJjN5nz6vauiYEUUr8P4U=
+golang.org/x/sync v0.19.0 h1:vV+1eWNmZ5geRlYjzm2adRgW2/mcpevXNg50YZtPCE4=
+golang.org/x/sync v0.19.0/go.mod h1:9KTHXmSnoGruLpwFjVSX0lNNA75CykiMECbovNTZqGI=

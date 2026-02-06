@@ -8,7 +8,8 @@ import (
 type Format int
 
 const (
-	FMT_JPG Format = iota
+	FMT_UNKNOWN Format = iota
+	FMT_JPG
 	FMT_PNG
 	FMT_WEBP
 )
@@ -37,12 +38,14 @@ func (f Format) MimeType() string {
 	panic(fmt.Sprintf("Unknow format type: %d", f))
 }
 
-func FormatFromString(s string) (Format, error) {
+func FormatFromString(s string) Format {
 	switch strings.ToUpper(s) {
 	case "JPG", "JPEG":
-		return FMT_JPG, nil
+		return FMT_JPG
 	case "PNG":
-		return FMT_PNG, nil
+		return FMT_PNG
+	case "WEBP":
+		return FMT_WEBP
 	}
-	return FMT_JPG, fmt.Errorf("Unsupported image format: %v", s)
+	return FMT_UNKNOWN
 }
