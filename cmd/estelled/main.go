@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
+	"log/slog"
 	"net"
 	"net/http"
 	"os"
@@ -18,8 +18,6 @@ import (
 	. "github.com/Maki-Daisuke/estelle"
 
 	"github.com/caarlos0/env/v11"
-	"github.com/codegangsta/negroni"
-	"github.com/gorilla/mux"
 )
 
 var config struct {
@@ -42,32 +40,37 @@ func (e ForbiddenError) Error() string { return e.msg }
 
 func main() {
 	if err := env.Parse(&config); err != nil {
-		log.Fatalf("Failed to parse env: %v", err)
+		slog.Error("Failed to parse env", "error", err)
+		os.Exit(1)
 	}
 
 	if config.CacheDir == "" {
 		home, err := os.UserHomeDir()
 		if err != nil {
-			log.Fatalf("Failed to get user home dir: %v", err)
+			slog.Error("Failed to get user home dir", "error", err)
+			os.Exit(1)
 		}
 		config.CacheDir = filepath.Join(home, ".cache", "estelled")
 	}
 
 	if config.AllowedDirs == "" {
-		log.Fatal("ESTELLE_ALLOWED_DIRS is required")
+		slog.Error("ESTELLE_ALLOWED_DIRS is required")
+		os.Exit(1)
 	}
 	allowedDirs = filepath.SplitList(config.AllowedDirs)
 	for i, dir := range allowedDirs {
 		abs, err := filepath.Abs(dir)
 		if err != nil {
-			log.Fatalf("Failed to get absolute path for %s: %v", dir, err)
+			slog.Error("Failed to get absolute path", "dir", dir, "error", err)
+			os.Exit(1)
 		}
 		allowedDirs[i] = abs + "/"
 	}
 
 	limitBytes, err := parseBytes(config.Limit)
 	if err != nil {
-		log.Fatalf("Invalid limit format: %v", err)
+		slog.Error("Invalid limit format", "ESTELLE_CACHE_LIMIT", config.Limit, "error", err)
+		os.Exit(1)
 	}
 
 	// Setup signal handler to properly shutdown the goroutine behind Estelle
@@ -76,17 +79,17 @@ func main() {
 
 	estelle, err = New(config.CacheDir, limitBytes, config.GCHighRatio, config.GCLowRatio)
 	if err != nil {
-		log.Fatal(err)
+		slog.Error("Failed to initialize estelle", "error", err)
+		os.Exit(1)
 	}
 
-	router := mux.NewRouter()
-	router.HandleFunc("/get", handleGet).
-		Methods("GET", "POST")
-	router.HandleFunc("/queue", handleQueue).
-		Methods("GET", "POST")
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /get", handleGet)
+	mux.HandleFunc("POST /get", handleGet)
+	mux.HandleFunc("GET /queue", handleQueue)
+	mux.HandleFunc("POST /queue", handleQueue)
 
-	n := negroni.New(negroni.NewRecovery(), negroni.NewLogger())
-	n.UseHandler(router)
+	handler := withRecovery(withLogger(mux))
 
 	network := "tcp"
 	addr := config.Addr
@@ -97,39 +100,41 @@ func main() {
 
 	l, err := net.Listen(network, addr)
 	if err != nil {
-		log.Fatalf("Failed to listen on %s: %v", config.Addr, err)
+		slog.Error("Failed to listen", "addr", config.Addr, "error", err)
+		os.Exit(1)
 	}
 	defer l.Close()
 
 	server := &http.Server{
-		Handler: n,
+		Handler: handler,
 	}
 
 	go func() {
-		log.Printf("listening on %s", config.Addr)
+		slog.Info("listening", "network", network, "addr", addr)
 		if err := server.Serve(l); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("Server failed: %v", err)
+			slog.Error("Server failed", "error", err)
+			os.Exit(1)
 		}
 	}()
 
 	<-ctx.Done()
-	log.Println("Shutting down server...")
+	slog.Info("Shutting down server...")
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	if err := server.Shutdown(shutdownCtx); err != nil {
-		log.Printf("Server forced to shutdown: %v", err)
+		slog.Error("Server forced to shutdown", "error", err)
 	}
 	if err := estelle.Shutdown(shutdownCtx); err != nil {
-		log.Printf("Estelle shutdown failed: %v", err)
+		slog.Error("Estelle shutdown failed", "error", err)
 	}
 
 	if network == "unix" {
 		if err := os.Remove(addr); err != nil {
-			log.Printf("Failed to remove socket file: %v", err)
+			slog.Error("Failed to remove socket file", "error", err)
 		} else {
-			log.Println("Socket file removed")
+			slog.Info("Socket file removed")
 		}
 	}
 }

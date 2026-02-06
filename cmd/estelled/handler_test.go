@@ -12,7 +12,6 @@ import (
 	"time"
 
 	. "github.com/Maki-Daisuke/estelle"
-	"github.com/gorilla/mux"
 
 	"image"
 	"image/color"
@@ -57,8 +56,9 @@ func TestCacheIntegration(t *testing.T) {
 	allowedDirs = []string{tempCache}
 
 	// Setup Router
-	router := mux.NewRouter()
-	router.HandleFunc("/queue", handleQueue).Methods("GET", "POST")
+	router := http.NewServeMux()
+	router.HandleFunc("GET /queue", handleQueue)
+	router.HandleFunc("POST /queue", handleQueue)
 
 	ts := httptest.NewServer(router)
 	defer ts.Close()
