@@ -68,7 +68,7 @@ func main() {
 			slog.Error("Failed to get absolute path", "dir", dir, "error", err)
 			os.Exit(1)
 		}
-		allowedDirs[i] = abs + "/"
+		allowedDirs[i] = abs + string(os.PathSeparator)
 	}
 
 	limitBytes, err := parseBytes(config.Limit)
@@ -242,10 +242,10 @@ func thumbInfoFromReq(req *http.Request) (ThumbInfo, error) {
 		return ThumbInfo{}, fmt.Errorf(`"source" is required`)
 	}
 	source := req.URL.Query()["source"][0]
-	if source == "" || source[0] != '/' {
-		source = "/" + source
-	}
 	source = filepath.Clean(source)
+	if !filepath.IsAbs(source) {
+		return ThumbInfo{}, fmt.Errorf("source must be an absolute path")
+	}
 
 	allowed := false
 	for _, dir := range allowedDirs {
