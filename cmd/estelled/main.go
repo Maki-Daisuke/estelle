@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"errors"
-	"fmt"
 	"log/slog"
 	"net"
 	"net/http"
@@ -35,12 +34,6 @@ var config struct {
 
 var estelle *Estelle
 var allowedDirs []string
-
-type ForbiddenError struct {
-	msg string
-}
-
-func (e ForbiddenError) Error() string { return e.msg }
 
 func main() {
 	if err := env.Parse(&config); err != nil {
@@ -187,14 +180,9 @@ func parseBytes(s string) (int64, error) {
 func handleGet(res http.ResponseWriter, req *http.Request) {
 	ti, err := thumbInfoFromReq(req)
 	if err != nil {
-		if os.IsNotExist(err) {
-			res.WriteHeader(404)
-			res.Write([]byte("Not found"))
-			return
-		}
-		if errors.As(err, &ForbiddenError{}) {
-			res.WriteHeader(http.StatusForbidden)
-			res.Write([]byte("Access denied"))
+		var he HTTPError
+		if errors.As(err, &he) {
+			http.Error(res, he.msg, he.code)
 			return
 		}
 		panic(err)
@@ -211,14 +199,9 @@ func handleGet(res http.ResponseWriter, req *http.Request) {
 func handleQueue(res http.ResponseWriter, req *http.Request) {
 	ti, err := thumbInfoFromReq(req)
 	if err != nil {
-		if os.IsNotExist(err) {
-			res.WriteHeader(404)
-			res.Write([]byte("Not found"))
-			return
-		}
-		if errors.As(err, &ForbiddenError{}) {
-			res.WriteHeader(http.StatusForbidden)
-			res.Write([]byte("Access denied"))
+		var he HTTPError
+		if errors.As(err, &he) {
+			http.Error(res, he.msg, he.code)
 			return
 		}
 		panic(err)
@@ -239,12 +222,12 @@ func handleQueue(res http.ResponseWriter, req *http.Request) {
 
 func thumbInfoFromReq(req *http.Request) (ThumbInfo, error) {
 	if !(len(req.URL.Query()["source"]) > 0) {
-		return ThumbInfo{}, fmt.Errorf(`"source" is required`)
+		return ThumbInfo{}, HTTPError{code: http.StatusBadRequest, msg: "source is required"}
 	}
 	source := req.URL.Query()["source"][0]
 	source = filepath.Clean(source)
 	if !filepath.IsAbs(source) {
-		return ThumbInfo{}, fmt.Errorf("source must be an absolute path")
+		return ThumbInfo{}, HTTPError{code: http.StatusBadRequest, msg: "source must be an absolute path"}
 	}
 
 	allowed := false
@@ -255,13 +238,20 @@ func thumbInfoFromReq(req *http.Request) (ThumbInfo, error) {
 		}
 	}
 	if !allowed {
-		return ThumbInfo{}, ForbiddenError{msg: fmt.Sprintf("Access denied: %s is not in allowed directories", source)}
+		return ThumbInfo{}, HTTPError{code: http.StatusForbidden, msg: "Access denied: not in allowed directories"}
 	}
 
 	size := parseQuerySize(req.URL.Query()["size"])
 	mode := parseQueryMode(req.URL.Query()["mode"])
 	format := parseQueryFormat(req.URL.Query()["format"])
-	return estelle.NewThumbInfo(source, size, mode, format)
+	ti, err := estelle.NewThumbInfo(source, size, mode, format)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return ThumbInfo{}, HTTPError{code: http.StatusNotFound, msg: "Not found"}
+		}
+		return ThumbInfo{}, err
+	}
+	return ti, nil
 }
 
 func parseQuerySize(query []string) Size {
@@ -293,3 +283,10 @@ func parseQueryFormat(query []string) Format {
 	}
 	return FMT_JPG
 }
+
+type HTTPError struct {
+	code int
+	msg  string
+}
+
+func (e HTTPError) Error() string { return e.msg }
