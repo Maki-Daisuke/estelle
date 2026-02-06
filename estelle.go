@@ -3,6 +3,7 @@ package estelle
 import (
 	"context"
 	"os"
+	"sync"
 
 	"github.com/Maki-Daisuke/go-filiq"
 	"golang.org/x/sync/singleflight"
@@ -15,7 +16,7 @@ type Estelle struct {
 	gc     *GarbageCollector
 }
 
-func New(ctx context.Context, path string, cacheLimit int64, gcHighRatio, gcLowRatio float64) (*Estelle, error) {
+func New(path string, cacheLimit int64, gcHighRatio, gcLowRatio float64) (*Estelle, error) {
 	dir, err := NewThumbInfoFactory(path)
 	if err != nil {
 		return nil, err
@@ -24,8 +25,23 @@ func New(ctx context.Context, path string, cacheLimit int64, gcHighRatio, gcLowR
 		dir:    dir,
 		runner: filiq.New(filiq.WithLIFO(), filiq.WithWorkers(2), filiq.WithBufferSize(1024)),
 		sf:     new(singleflight.Group),
-		gc:     NewGarbageCollector(ctx, dir.BaseDir(), cacheLimit, gcHighRatio, gcLowRatio),
+		gc:     NewGarbageCollector(dir.BaseDir(), cacheLimit, gcHighRatio, gcLowRatio),
 	}, nil
+}
+
+func (estl *Estelle) Shutdown(ctx context.Context) error {
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		estl.runner.Shutdown(ctx)
+	}()
+	go func() {
+		defer wg.Done()
+		estl.gc.Shutdown(ctx)
+	}()
+	wg.Wait()
+	return ctx.Err()
 }
 
 func (estl *Estelle) NewThumbInfo(path string, size Size, mode Mode, format Format) (ThumbInfo, error) {

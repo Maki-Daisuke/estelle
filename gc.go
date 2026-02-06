@@ -7,30 +7,50 @@ import (
 	"math/rand"
 	"os"
 	"path/filepath"
+	"sync"
 	"sync/atomic"
 	"time"
 )
 
 type GarbageCollector struct {
-	dir       string
-	limit     int64
-	highLimit int64 // cache-limit * high-ratio
-	lowLimit  int64 // cache-limit * low-ratio
-	used      int64 // atomic
-	gcSignal  chan struct{}
+	dir          string
+	limit        int64
+	highLimit    int64 // cache-limit * high-ratio
+	lowLimit     int64 // cache-limit * low-ratio
+	used         int64 // atomic
+	gcSignal     chan struct{}
+	stopCh       chan struct{}
+	stoppedCh    chan struct{}
+	wg           sync.WaitGroup
+	shutdownOnce sync.Once
 }
 
-func NewGarbageCollector(ctx context.Context, dir string, limit int64, highRatio, lowRatio float64) *GarbageCollector {
+func NewGarbageCollector(dir string, limit int64, highRatio, lowRatio float64) *GarbageCollector {
 	gc := &GarbageCollector{
 		dir:       dir,
 		limit:     limit,
 		highLimit: int64(float64(limit) * highRatio),
 		lowLimit:  int64(float64(limit) * lowRatio),
 		gcSignal:  make(chan struct{}, 1),
+		stopCh:    make(chan struct{}),
+		stoppedCh: make(chan struct{}),
 	}
 	// Asynchronous startup scan
-	go gc.Run(ctx)
+	gc.wg.Add(1)
+	go gc.run()
 	return gc
+}
+
+func (gc *GarbageCollector) Shutdown(ctx context.Context) error {
+	gc.shutdownOnce.Do(func() {
+		close(gc.stopCh)
+	})
+	select {
+	case <-gc.stoppedCh:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }
 
 func (gc *GarbageCollector) Track(delta int64) {
@@ -42,25 +62,28 @@ func (gc *GarbageCollector) Track(delta int64) {
 	}
 }
 
-func (gc *GarbageCollector) Run(ctx context.Context) {
-	gc.initialScan(ctx)
-	for { // Wait for GC signal or context cancellation
+func (gc *GarbageCollector) run() {
+	defer gc.wg.Done()
+	defer close(gc.stoppedCh)
+
+	gc.initialScan()
+	for { // Wait for GC signal or stop channel
 		select {
-		case <-ctx.Done():
+		case <-gc.stopCh:
 			return
 		case <-gc.gcSignal:
 			if atomic.LoadInt64(&gc.used) > gc.highLimit {
-				gc.RunGC(ctx)
+				gc.runGC()
 			}
 		}
 	}
 }
 
-func (gc *GarbageCollector) initialScan(ctx context.Context) {
+func (gc *GarbageCollector) initialScan() {
 	var total int64
 	filepath.WalkDir(gc.dir, func(path string, de fs.DirEntry, err error) error {
-		select { // Check if the context is canceled
-		case <-ctx.Done():
+		select { // Check if stopped
+		case <-gc.stopCh:
 			return fs.SkipAll
 		default:
 		}
@@ -73,12 +96,12 @@ func (gc *GarbageCollector) initialScan(ctx context.Context) {
 	gc.Track(total) // This kicks the GC if needed
 }
 
-func (gc *GarbageCollector) RunGC(ctx context.Context) {
+func (gc *GarbageCollector) runGC() {
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 
 	for atomic.LoadInt64(&gc.used) > gc.lowLimit {
 		select {
-		case <-ctx.Done():
+		case <-gc.stopCh:
 			return
 		default:
 			removed := gc.evictOneBatch(rng)

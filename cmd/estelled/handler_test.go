@@ -46,15 +46,12 @@ func TestCacheIntegration(t *testing.T) {
 	}
 	f.Close()
 
-	// Initialize Estelle global
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	var errInit error
-	estelle, errInit = New(ctx, tempCache, 1024*1024*100, 0.9, 0.75)
+	estelle, errInit = New(tempCache, 1024*1024*100, 0.9, 0.75)
 	if errInit != nil {
 		t.Fatal(errInit)
 	}
+	defer estelle.Shutdown(context.Background())
 
 	// Set allowedDirs global for testing
 	allowedDirs = []string{tempCache}
@@ -72,9 +69,9 @@ func TestCacheIntegration(t *testing.T) {
 	// Since 'Make' is async in the queue... we need to wait.
 	// BUT, if we want to validte "same request doesn't create new"...
 	// Let's send the request.
-	
+
 	reqURL := fmt.Sprintf("%s/queue?source=%s&size=100x100", ts.URL, tempSourceFile)
-	
+
 	resp, err := http.Get(reqURL)
 	if err != nil {
 		t.Fatal(err)
@@ -90,11 +87,11 @@ func TestCacheIntegration(t *testing.T) {
 	// Since we don't have a direct way to know when it's done via HTTP (other than polling),
 	// we can poll /queue until it returns 200.
 	// Note: handleQueue returns 200 if it exists.
-	
+
 	var thumbPath1 string
 	timeout := time.After(5 * time.Second)
 	ticker := time.NewTicker(100 * time.Millisecond)
-	
+
 Loop:
 	for {
 		select {
@@ -157,7 +154,7 @@ Loop:
 	// So `estelle.Exists` will return false for the NEW ID.
 	// It should return 202 Accepted again (enqueued).
 	// Then we wait for 200 OK.
-	
+
 	resp3, err := http.Get(reqURL)
 	if err != nil {
 		t.Fatal(err)
@@ -180,7 +177,7 @@ Loop:
 	// Wait for new generation
 	var thumbPath3 string
 	timeout2 := time.After(5 * time.Second)
-	
+
 Loop2:
 	for {
 		select {

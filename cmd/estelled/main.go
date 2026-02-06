@@ -74,7 +74,7 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	estelle, err = New(ctx, config.CacheDir, limitBytes, config.GCHighRatio, config.GCLowRatio)
+	estelle, err = New(config.CacheDir, limitBytes, config.GCHighRatio, config.GCLowRatio)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -120,6 +120,9 @@ func main() {
 
 	if err := server.Shutdown(shutdownCtx); err != nil {
 		log.Printf("Server forced to shutdown: %v", err)
+	}
+	if err := estelle.Shutdown(shutdownCtx); err != nil {
+		log.Printf("Estelle shutdown failed: %v", err)
 	}
 
 	if network == "unix" {

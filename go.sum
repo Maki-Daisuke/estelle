@@ -1,5 +1,9 @@
 github.com/Maki-Daisuke/go-filiq v0.1.0 h1:wF9+xG6zgqbfFeRsBNxaUj4FliCXU1XDbqRERD57P6A=
 github.com/Maki-Daisuke/go-filiq v0.1.0/go.mod h1:nvvcSzfzgmZ223TBQjD4mmkLDhYrJzXzc09w2rC1WEE=
+github.com/Maki-Daisuke/go-filiq v0.2.0 h1:jiK7BPlZ30aR92s51Hi99qqrdEJs+t6HY31WL0vXHyo=
+github.com/Maki-Daisuke/go-filiq v0.2.0/go.mod h1:nvvcSzfzgmZ223TBQjD4mmkLDhYrJzXzc09w2rC1WEE=
+github.com/Maki-Daisuke/go-filiq v0.3.0 h1:J3xsWZmnRV7hf7WW88A7r+G5zWZu/IlmDIiQ9M3mLBM=
+github.com/Maki-Daisuke/go-filiq v0.3.0/go.mod h1:nvvcSzfzgmZ223TBQjD4mmkLDhYrJzXzc09w2rC1WEE=
 github.com/caarlos0/env/v11 v11.3.1 h1:cArPWC15hWmEt+gWk7YBi7lEXTXCvpaSdCiZE2X5mCA=
 github.com/caarlos0/env/v11 v11.3.1/go.mod h1:qupehSf/Y0TUTsxKywqRt/vJjN5nz6vauiYEUUr8P4U=
 github.com/codegangsta/negroni v1.0.0 h1:+aYywywx4bnKXWvoWtRfJ91vC59NbEhEY03sZjQhbVY=
