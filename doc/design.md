@@ -78,6 +78,8 @@ type Fingerprint struct {
 | `ESTELLE_CACHE_LIMIT` | キャッシュの最大容量制限。単位 (MB, GB) 対応。 | `1GB` |
 | `ESTELLE_GC_HIGH_RATIO` | GCを開始する使用率（対 limit）。 | `0.90` (90%) |
 | `ESTELLE_GC_LOW_RATIO` | GCを停止する使用率（対 limit）。 | `0.75` (75%) |
+| `ESTELLE_WORKERS` | サムネイル生成を行うワーカースレッド数。 | `NumCPU / 2` |
+| `ESTELLE_QUEUE_SIZE` | サムネイル生成タスクのキュー最大長。 | `1024` |
 
 1. **Startup:** 非同期で全キャッシュディレクトリをスキャンし、総容量を計算する。
 2. **Runtime:** ファイル生成・削除のたびに、メモリ上のカウンター（Atomic Int64）を増減させる。

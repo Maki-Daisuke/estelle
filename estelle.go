@@ -16,15 +16,15 @@ type Estelle struct {
 	gc     *GarbageCollector
 }
 
-func New(path string, cacheLimit int64, gcHighRatio, gcLowRatio float64, panicHandler func(interface{})) (*Estelle, error) {
+func New(path string, cacheLimit int64, gcHighRatio, gcLowRatio float64, workerNum, bufferSize int, panicHandler func(interface{})) (*Estelle, error) {
 	dir, err := NewThumbInfoFactory(path)
 	if err != nil {
 		return nil, err
 	}
 	opts := []filiq.Option{
 		filiq.WithLIFO(),
-		filiq.WithWorkers(2),
-		filiq.WithBufferSize(1024),
+		filiq.WithWorkers(workerNum),
+		filiq.WithBufferSize(bufferSize),
 	}
 	if panicHandler != nil {
 		opts = append(opts, filiq.WithPanicHandler(panicHandler))

@@ -100,6 +100,12 @@ You can configure the behavior of the daemon with the following environment vari
   * The target ratio of cache usage to stop Garbage Collection.
   * Value must be between 0.0 and 1.0.
   * Default: `0.75` (75%)
+* `ESTELLE_WORKERS`
+  * Number of workers to handle thumbnail generation.
+  * Default: `number of (logical) CPU cores / 2`
+* `ESTELLE_QUEUE_SIZE`
+  * Maximum number of queued thumbnail generation tasks.
+  * Default: `1024`
 
 ## How to Use
 

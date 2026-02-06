@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"runtime"
 	"runtime/debug"
 	"strconv"
 	"strings"
@@ -22,12 +23,14 @@ import (
 )
 
 var config struct {
-	Addr        string  `env:"ESTELLE_ADDR" envDefault:":1186"`
-	AllowedDirs string  `env:"ESTELLE_ALLOWED_DIRS"`
-	CacheDir    string  `env:"ESTELLE_CACHE_DIR"`
-	Limit       string  `env:"ESTELLE_CACHE_LIMIT" envDefault:"1GB"`
-	GCHighRatio float64 `env:"ESTELLE_GC_HIGH_RATIO" envDefault:"0.90"`
-	GCLowRatio  float64 `env:"ESTELLE_GC_LOW_RATIO" envDefault:"0.75"`
+	Addr           string  `env:"ESTELLE_ADDR" envDefault:":1186"`
+	AllowedDirs    string  `env:"ESTELLE_ALLOWED_DIRS"`
+	CacheDir       string  `env:"ESTELLE_CACHE_DIR"`
+	Limit          string  `env:"ESTELLE_CACHE_LIMIT" envDefault:"1GB"`
+	GCHighRatio    float64 `env:"ESTELLE_GC_HIGH_RATIO" envDefault:"0.90"`
+	GCLowRatio     float64 `env:"ESTELLE_GC_LOW_RATIO" envDefault:"0.75"`
+	WorkerPoolSize int     `env:"ESTELLE_WORKERS"`
+	TaskBufferSize int     `env:"ESTELLE_QUEUE_SIZE" envDefault:"1024"`
 }
 
 var estelle *Estelle
@@ -74,11 +77,18 @@ func main() {
 		os.Exit(1)
 	}
 
+	if config.WorkerPoolSize == 0 {
+		config.WorkerPoolSize = runtime.NumCPU() / 2
+		if config.WorkerPoolSize < 1 {
+			config.WorkerPoolSize = 1
+		}
+	}
+
 	// Setup signal handler to properly shutdown the goroutine behind Estelle
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	estelle, err = New(config.CacheDir, limitBytes, config.GCHighRatio, config.GCLowRatio, func(v interface{}) {
+	estelle, err = New(config.CacheDir, limitBytes, config.GCHighRatio, config.GCLowRatio, config.WorkerPoolSize, config.TaskBufferSize, func(v interface{}) {
 		slog.Error("Worker Panic", "panic", v, "stack", string(debug.Stack()))
 	})
 	if err != nil {

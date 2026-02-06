@@ -13,3 +13,6 @@ services:
       - ESTELLE_CACHE_DIR=/cache
       - ESTELLE_CACHE_LIMIT=100MB
       - ESTELLE_ALLOWED_DIRS=/app/tests
+      - ESTELLE_WORKERS=4
+      - ESTELLE_QUEUE_SIZE=100
+
