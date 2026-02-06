@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+	"time"
 
 	. "github.com/Maki-Daisuke/estelle"
 
@@ -99,8 +100,35 @@ func main() {
 		log.Fatalf("Failed to listen on %s: %v", config.Addr, err)
 	}
 	defer l.Close()
-	log.Printf("listening on %s", config.Addr)
-	http.Serve(l, n)
+
+	server := &http.Server{
+		Handler: n,
+	}
+
+	go func() {
+		log.Printf("listening on %s", config.Addr)
+		if err := server.Serve(l); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("Server failed: %v", err)
+		}
+	}()
+
+	<-ctx.Done()
+	log.Println("Shutting down server...")
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := server.Shutdown(shutdownCtx); err != nil {
+		log.Printf("Server forced to shutdown: %v", err)
+	}
+
+	if network == "unix" {
+		if err := os.Remove(addr); err != nil {
+			log.Printf("Failed to remove socket file: %v", err)
+		} else {
+			log.Println("Socket file removed")
+		}
+	}
 }
 
 func parseBytes(s string) (int64, error) {
