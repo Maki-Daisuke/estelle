@@ -1,7 +1,6 @@
-# Estelle - A Thumbnail Daemon
+# Estelle - High-Performance Thumbnailing & Caching Daemon for Embedded Systems
 
-_**NOTE: This is experimental and still heavily under development. Most of the
-features documented here is not implemeted yet.**_
+_**NOTE: This is experimental and still heavily under development. The specification is subject to change.**_
 
 ## Description
 
@@ -9,7 +8,7 @@ Estelle is a daemon that generates and caches thumbnails of images
 designed _for Linux embedded systems_.
 
 In some systems, there are many programs that need thumbnails of images. However,
-it's quite inefficient to generarte and keep multiple copies of a thumbnail of an
+it's quite inefficient to generate and keep multiple copies of a thumbnail of an
 image.
 
 Estelle solves this problem. It provides system-wide thumbnail pool for user
@@ -125,7 +124,7 @@ If the thumbnail does not exist yet, Estelled generates it on the fly. That mean
 it will block until the thumbnail is generated. If you do not want to block,
 please use `/queue` instead.
 
-An original image is specified by `source` patameter.
+An original image is specified by `source` parameter.
 
 For example, if you want thumbnail of `/foo/bar/baz.jpg`, you can request like this:
 
