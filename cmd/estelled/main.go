@@ -242,7 +242,7 @@ func thumbInfoFromReq(req *http.Request) (ThumbInfo, error) {
 		return ThumbInfo{}, fmt.Errorf(`"source" is required`)
 	}
 	source := req.URL.Query()["source"][0]
-	if source != "" && source[0] != '/' {
+	if source == "" || source[0] != '/' {
 		source = "/" + source
 	}
 	source = filepath.Clean(source)
