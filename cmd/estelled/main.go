@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -85,7 +86,21 @@ func main() {
 
 	n := negroni.New(negroni.NewRecovery(), negroni.NewLogger())
 	n.UseHandler(router)
-	n.Run(config.Addr)
+
+	network := "tcp"
+	addr := config.Addr
+	if strings.HasPrefix(addr, "unix://") {
+		network = "unix"
+		addr = strings.TrimPrefix(addr, "unix://")
+	}
+
+	l, err := net.Listen(network, addr)
+	if err != nil {
+		log.Fatalf("Failed to listen on %s: %v", config.Addr, err)
+	}
+	defer l.Close()
+	log.Printf("listening on %s", config.Addr)
+	http.Serve(l, n)
 }
 
 func parseBytes(s string) (int64, error) {
