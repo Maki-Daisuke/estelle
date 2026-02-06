@@ -1,6 +1,10 @@
 # Estelle - High-Performance Thumbnailing & Caching Daemon for Embedded Systems
 
-_**NOTE: This is experimental and still heavily under development. The specification is subject to change.**_
+[![Go Reference](https://pkg.go.dev/badge/github.com/Maki-Daisuke/estelle/v2.svg)](https://pkg.go.dev/github.com/Maki-Daisuke/estelle/v2)
+[![Go Report Card](https://goreportcard.com/badge/github.com/Maki-Daisuke/estelle/v2)](https://goreportcard.com/report/github.com/Maki-Daisuke/estelle/v2)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+_**NOTE: This is experimental and still under development.**_
 
 ## Description
 
