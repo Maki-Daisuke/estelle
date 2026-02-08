@@ -207,11 +207,16 @@ func handleQueue(res http.ResponseWriter, req *http.Request) {
 		}
 		panic(err)
 	}
-	c := estelle.Enqueue(ti)
+	ok, c := estelle.TryEnqueue(ti)
+	if !ok {
+		http.Error(res, "Task queue is full", http.StatusServiceUnavailable)
+		return
+	}
+
 	// Does not wait for the thumbnail to be created.
 	select {
-	case err, ok := <-c:
-		if !ok && err != nil {
+	case err := <-c:
+		if err != nil {
 			panic(err)
 		}
 		res.WriteHeader(200)

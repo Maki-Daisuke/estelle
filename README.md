@@ -156,8 +156,9 @@ See "Query Parameters" below for details.
 Request to make thumbnail. Thumbnailing task is queued and the response will be
 returned immediately. The thumbnailing task is executed in background in order.
 
-If the thumbnailing task is successfully queued, `/queue` will return `202 Accepted`.
 If the thumbnail already exists, it will return `200 OK` with the path to the thumbnail in the response body.
+If the thumbnailing task is successfully queued, `/queue` will return `202 Accepted`.
+If the thumbnailing queue is full, it will return `503 Service Unavailable`.
 
 #### Query Parameters
 

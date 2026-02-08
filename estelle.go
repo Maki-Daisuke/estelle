@@ -119,7 +119,26 @@ func (estl *Estelle) Enqueue(ti ThumbInfo) <-chan error {
 		close(c)
 		return c
 	}
-	estl.runner.Put(func() {
+	if !estl.runner.Put(estl.makeTask(ti, c)) {
+		panic("runner is already closed")
+	}
+	return c
+}
+
+func (estl *Estelle) TryEnqueue(ti ThumbInfo) (bool, <-chan error) {
+	c := make(chan error)
+	if ti.Exists() {
+		close(c)
+		return true, c
+	}
+	if !estl.runner.TryPut(estl.makeTask(ti, c)) {
+		return false, c
+	}
+	return true, c
+}
+
+func (estl *Estelle) makeTask(ti ThumbInfo, c chan<- error) func() {
+	return func() {
 		defer close(c)
 		_, err, _ := estl.sf.Do(ti.String(), func() (any, error) {
 			if ti.Exists() {
@@ -138,6 +157,5 @@ func (estl *Estelle) Enqueue(ti ThumbInfo) <-chan error {
 		if err != nil {
 			c <- err
 		}
-	})
-	return c
+	}
 }
