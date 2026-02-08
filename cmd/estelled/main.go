@@ -30,6 +30,7 @@ var config struct {
 	GCLowRatio     float64 `env:"ESTELLE_GC_LOW_RATIO" envDefault:"0.75"`
 	WorkerPoolSize int     `env:"ESTELLE_WORKERS"`
 	TaskBufferSize int     `env:"ESTELLE_QUEUE_SIZE" envDefault:"1024"`
+	Secret         string  `env:"ESTELLE_SECRET"`
 }
 
 var estelle *Estelle
@@ -101,7 +102,7 @@ func main() {
 	mux.HandleFunc("GET /queue", handleQueue)
 	mux.HandleFunc("POST /queue", handleQueue)
 
-	handler := withRecovery(withLogger(mux))
+	handler := withRecovery(withLogger(withAuth(mux, config.Secret)))
 
 	network := "tcp"
 	addr := config.Addr

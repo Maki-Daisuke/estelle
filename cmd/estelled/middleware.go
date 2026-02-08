@@ -1,11 +1,27 @@
 package main
 
 import (
+	"crypto/subtle"
 	"log/slog"
 	"net/http"
 	"runtime/debug"
 	"time"
 )
+
+func withAuth(next http.Handler, s string) http.Handler {
+	if s == "" {
+		return next
+	}
+	secret := []byte(s)
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		key := r.URL.Query().Get("key")
+		if subtle.ConstantTimeCompare([]byte(key), secret) != 1 {
+			http.Error(w, "Forbidden", http.StatusForbidden)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
 
 func withRecovery(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

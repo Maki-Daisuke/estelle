@@ -110,6 +110,10 @@ You can configure the behavior of the daemon with the following environment vari
 * `ESTELLE_QUEUE_SIZE`
   * Maximum number of queued thumbnail generation tasks.
   * Default: `1024`
+* `ESTELLE_SECRET`
+  * Shared secret key for authentication.
+  * If set, all requests must include `key` query parameter with this value.
+  * Default: (empty/disabled)
 
 ## How to Use
 
@@ -177,6 +181,9 @@ If the thumbnail already exists, it will return `200 OK` with the path to the th
   * Image format of the output thumbnail
   * One of: `jpg`, `png`, `webp`
   * Default: `jpg`
+* `key`
+  * Shared secret key.
+  * **Required** if `ESTELLE_SECRET` environment variable is set.
 
 ## Caching
 
