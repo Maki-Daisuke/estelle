@@ -44,7 +44,7 @@ func NewThumbInfoFactory(baseDir string) (ThumbInfoFactory, error) {
 			return "", err
 		}
 	} else if !stat.IsDir() {
-		return "", fmt.Errorf(`"%s" exists, but it is not a dirctory`, absPath)
+		return "", fmt.Errorf(`"%s" exists, but it is not a directory`, absPath)
 	}
 	temp, err := os.CreateTemp(absPath, "estelle-test-*")
 	if err != nil {
