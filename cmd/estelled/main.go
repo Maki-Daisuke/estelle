@@ -3,17 +3,21 @@ package main
 import (
 	"context"
 	"errors"
+	"flag"
+	"fmt"
 	"log/slog"
 	"net"
 	"net/http"
 	"os"
 	"os/signal"
 	"path/filepath"
+	"reflect"
 	"runtime"
 	"runtime/debug"
 	"strconv"
 	"strings"
 	"syscall"
+	"text/tabwriter"
 	"time"
 
 	. "github.com/Maki-Daisuke/estelle/v2"
@@ -22,21 +26,24 @@ import (
 )
 
 var config struct {
-	Addr           string  `env:"ESTELLE_ADDR" envDefault:":1186"`
-	AllowedDirs    string  `env:"ESTELLE_ALLOWED_DIRS"`
-	CacheDir       string  `env:"ESTELLE_CACHE_DIR"`
-	Limit          string  `env:"ESTELLE_CACHE_LIMIT" envDefault:"1GB"`
-	GCHighRatio    float64 `env:"ESTELLE_GC_HIGH_RATIO" envDefault:"0.90"`
-	GCLowRatio     float64 `env:"ESTELLE_GC_LOW_RATIO" envDefault:"0.75"`
-	WorkerPoolSize int     `env:"ESTELLE_WORKERS"`
-	TaskBufferSize int     `env:"ESTELLE_QUEUE_SIZE" envDefault:"1024"`
-	Secret         string  `env:"ESTELLE_SECRET"`
+	Addr           string  `env:"ESTELLE_ADDR" envDefault:":1186" desc:"Address to listen on"`
+	AllowedDirs    string  `env:"ESTELLE_ALLOWED_DIRS" desc:"Comma separated list of allowed directories"`
+	CacheDir       string  `env:"ESTELLE_CACHE_DIR" desc:"Directory to store thumbnails"`
+	Limit          string  `env:"ESTELLE_CACHE_LIMIT" envDefault:"1GB" desc:"Cache size limit (e.g. 1GB, 500MB)"`
+	GCHighRatio    float64 `env:"ESTELLE_GC_HIGH_RATIO" envDefault:"0.90" desc:"GC high water mark ratio"`
+	GCLowRatio     float64 `env:"ESTELLE_GC_LOW_RATIO" envDefault:"0.75" desc:"GC low water mark ratio"`
+	WorkerPoolSize int     `env:"ESTELLE_WORKERS" desc:"Number of worker goroutines"`
+	TaskBufferSize int     `env:"ESTELLE_QUEUE_SIZE" envDefault:"1024" desc:"Task queue buffer size"`
+	Secret         string  `env:"ESTELLE_SECRET" desc:"Secret key for authentication"`
 }
 
 var estelle *Estelle
 var allowedDirs []string
 
 func main() {
+	flag.Usage = usage
+	flag.Parse()
+
 	if err := env.Parse(&config); err != nil {
 		slog.Error("Failed to parse env", "error", err)
 		os.Exit(1)
@@ -53,6 +60,7 @@ func main() {
 
 	if config.AllowedDirs == "" {
 		slog.Error("ESTELLE_ALLOWED_DIRS is required")
+		flag.Usage()
 		os.Exit(1)
 	}
 	allowedDirs = filepath.SplitList(config.AllowedDirs)
@@ -150,6 +158,29 @@ func main() {
 			slog.Info("Socket file removed")
 		}
 	}
+}
+
+func usage() {
+	fmt.Fprintf(os.Stderr, "Usage of %s:\n", os.Args[0])
+	fmt.Fprintln(os.Stderr, "This application is configured via environment variables.")
+	fmt.Fprintln(os.Stderr, "")
+	fmt.Fprintln(os.Stderr, "Environment Variables:")
+
+	w := tabwriter.NewWriter(os.Stderr, 0, 0, 2, ' ', 0)
+	t := reflect.TypeOf(config)
+	for i := 0; i < t.NumField(); i++ {
+		field := t.Field(i)
+		envName := field.Tag.Get("env")
+		envDefault := field.Tag.Get("envDefault")
+		desc := field.Tag.Get("desc")
+
+		if envDefault != "" {
+			fmt.Fprintf(w, "  %s\t%s\t(default: %s)\n", envName, desc, envDefault)
+		} else {
+			fmt.Fprintf(w, "  %s\t%s\t\n", envName, desc)
+		}
+	}
+	w.Flush()
 }
 
 func parseBytes(s string) (int64, error) {
