@@ -2,12 +2,15 @@ package estelle
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"sync"
 
 	"github.com/Maki-Daisuke/go-filiq"
 	"golang.org/x/sync/singleflight"
 )
+
+var ErrEstelleClosed = fmt.Errorf("estelle is already closed")
 
 type Estelle struct {
 	dir    ThumbInfoFactory
@@ -114,19 +117,19 @@ func (estl *Estelle) NewThumbInfo(path string, size Size, mode Mode, format Form
 }
 
 func (estl *Estelle) Enqueue(ti ThumbInfo) <-chan error {
-	c := make(chan error)
+	c := make(chan error, 1)
 	if ti.Exists() {
 		close(c)
 		return c
 	}
 	if !estl.runner.Put(estl.makeTask(ti, c)) {
-		panic("runner is already closed")
+		c <- ErrEstelleClosed
 	}
 	return c
 }
 
 func (estl *Estelle) TryEnqueue(ti ThumbInfo) (bool, <-chan error) {
-	c := make(chan error)
+	c := make(chan error, 1)
 	if ti.Exists() {
 		close(c)
 		return true, c
