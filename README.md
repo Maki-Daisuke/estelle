@@ -167,7 +167,7 @@ If the thumbnailing queue is full, it will return `503 Service Unavailable` imme
 * `source`
   * Path to image file
   * This parameter is required. If this is missing, Estelled returns `400 Bad Request`.
-  * The path must be absolute path. If relative path is passed, it is treated as relative path from root directory.
+  * The path must be an absolute path. If a relative path is passed, Estelled returns `400 Bad Request`.
   * **Security**: The path must be inside one of the allowed directories specified at startup. Otherwise `403 Forbidden` will be returned.
   * If the file specified by this parameter is not exists or not an image file, Estelled returns `404 Not Found`.
 * `size`

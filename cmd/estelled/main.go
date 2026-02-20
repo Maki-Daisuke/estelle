@@ -191,16 +191,16 @@ func parseBytes(s string) (int64, error) {
 	var unit int64 = 1
 	if strings.HasSuffix(s, "KB") || strings.HasSuffix(s, "K") {
 		unit = 1024
-		s = strings.TrimRight(s, "KB")
-		s = strings.TrimRight(s, "K")
+		s = strings.TrimSuffix(s, "KB")
+		s = strings.TrimSuffix(s, "K")
 	} else if strings.HasSuffix(s, "MB") || strings.HasSuffix(s, "M") {
 		unit = 1024 * 1024
-		s = strings.TrimRight(s, "MB")
-		s = strings.TrimRight(s, "M")
+		s = strings.TrimSuffix(s, "MB")
+		s = strings.TrimSuffix(s, "M")
 	} else if strings.HasSuffix(s, "GB") || strings.HasSuffix(s, "G") {
 		unit = 1024 * 1024 * 1024
-		s = strings.TrimRight(s, "GB")
-		s = strings.TrimRight(s, "G")
+		s = strings.TrimSuffix(s, "GB")
+		s = strings.TrimSuffix(s, "G")
 	}
 	val, err := strconv.ParseInt(s, 10, 64)
 	if err != nil {
@@ -219,7 +219,7 @@ func handleGet(res http.ResponseWriter, req *http.Request) {
 		}
 		panic(err)
 	}
-	
+
 	taskRes, err := estelle.Enqueue(ti)
 	if err != nil {
 		if err == ErrEstelleQueueFull {
@@ -228,14 +228,18 @@ func handleGet(res http.ResponseWriter, req *http.Request) {
 		}
 		panic(err)
 	}
-	
+
 	if taskRes != nil {
-		<-taskRes.Done()
-		if err := taskRes.Err(); err != nil {
-			panic(err)
+		select {
+		case <-taskRes.Done():
+			if err := taskRes.Err(); err != nil {
+				panic(err)
+			}
+		case <-req.Context().Done():
+			return
 		}
 	}
-	
+
 	res.WriteHeader(200)
 	res.Write([]byte(ti.Path()))
 }
@@ -251,14 +255,7 @@ func handleQueue(res http.ResponseWriter, req *http.Request) {
 		panic(err)
 	}
 
-	if ti.Exists() {
-		res.WriteHeader(200)
-		res.Write([]byte(ti.Path()))
-		return
-	}
-
-	_, err = estelle.Enqueue(ti)
-	
+	taskRes, err := estelle.Enqueue(ti)
 	if err != nil {
 		if err == ErrEstelleQueueFull {
 			http.Error(res, "Task queue is full", http.StatusServiceUnavailable)
@@ -267,14 +264,25 @@ func handleQueue(res http.ResponseWriter, req *http.Request) {
 		panic(err)
 	}
 
-	res.WriteHeader(202) // Accepted
+	select {
+	case <-taskRes.Done():
+		if err := taskRes.Err(); err != nil {
+			panic(err)
+		}
+		res.WriteHeader(200)
+		res.Write([]byte(ti.Path()))
+		return
+	default:
+		res.WriteHeader(202) // Accepted
+		return
+	}
 }
 
 func thumbInfoFromReq(req *http.Request) (ThumbInfo, error) {
-	if !(len(req.URL.Query()["source"]) > 0) {
+	source := req.URL.Query().Get("source")
+	if source == "" {
 		return ThumbInfo{}, HTTPError{code: http.StatusBadRequest, msg: "source is required"}
 	}
-	source := req.URL.Query()["source"][0]
 	source = filepath.Clean(source)
 	if !filepath.IsAbs(source) {
 		return ThumbInfo{}, HTTPError{code: http.StatusBadRequest, msg: "source must be an absolute path"}
