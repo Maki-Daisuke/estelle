@@ -4,6 +4,7 @@ import (
 	"context"
 	"io/fs"
 	"log"
+	"math"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -181,27 +182,31 @@ func (gc *GarbageCollector) evictOneBatch(rng *rand.Rand) int64 {
 		return 0
 	}
 
-	oldest := entries[0]
-	oldestInfo, _ := oldest.Info()
-	oldestTime := GetAtime(oldestInfo)
-	for _, de := range entries[1:] {
+	var oldest fs.DirEntry
+	var oldestInfo fs.FileInfo
+	oldestTime := time.UnixMilli(math.MaxInt64) // Initialize with far future time
+
+	for _, de := range entries {
 		if de.Type().IsRegular() {
-			fi, _ := de.Info()
+			fi, err := de.Info()
+			if err != nil {
+				continue // file seems to have been removed or renamed
+			}
 			t := GetAtime(fi)
 			if t.Before(oldestTime) {
 				oldest = de
 				oldestTime = t
+				oldestInfo = fi
 			}
 		}
 	}
 
-	path := filepath.Join(n2Path, oldest.Name())
-	fi, err := oldest.Info()
-	if err != nil {
-		log.Printf("failed to get file info of %s: %v", path, err)
+	if oldest == nil {
 		return 0
 	}
-	size := fi.Size()
+
+	path := filepath.Join(n2Path, oldest.Name())
+	size := oldestInfo.Size()
 	err = os.Remove(path)
 	if err != nil {
 		log.Printf("failed to remove %s: %v", path, err)
