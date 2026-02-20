@@ -138,6 +138,8 @@ If the thumbnail does not exist yet, Estelled generates it on the fly. That mean
 it will block until the thumbnail is generated. If you do not want to block,
 please use `/queue` instead.
 
+If the internal task queue is full, `/get` will immediately return `503 Service Unavailable` without waiting.
+
 An original image is specified by `source` parameter.
 
 For example, if you want thumbnail of `/foo/bar/baz.jpg`, you can request like this:
@@ -158,7 +160,7 @@ returned immediately. The thumbnailing task is executed in background in order.
 
 If the thumbnail already exists, it will return `200 OK` with the path to the thumbnail in the response body.
 If the thumbnailing task is successfully queued, `/queue` will return `202 Accepted`.
-If the thumbnailing queue is full, it will return `503 Service Unavailable`.
+If the thumbnailing queue is full, it will return `503 Service Unavailable` immediately (fail-fast, non-blocking).
 
 #### Query Parameters
 

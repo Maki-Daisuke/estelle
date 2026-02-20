@@ -75,9 +75,14 @@ func TestQueueOverflow(t *testing.T) {
 
 	for i := 0; i < 10; i++ {
 		wg.Add(1)
-		go func(i int) {
+		
+		// Create a unique dummy file for each request to bypass deduplication
+		uniqueTemp := filepath.Join(tempCache, fmt.Sprintf("dummy_%d.jpg", i))
+		os.WriteFile(uniqueTemp, []byte(fmt.Sprintf("dummy %d", i)), 0644)
+		
+		go func(i int, sourceFile string) {
 			defer wg.Done()
-			reqURL := fmt.Sprintf("%s/queue?source=%s&size=100x100", ts.URL, tempSourceFile)
+			reqURL := fmt.Sprintf("%s/queue?source=%s&size=100x100", ts.URL, sourceFile)
 
 			resp, err := http.Get(reqURL)
 			if err != nil {
@@ -87,7 +92,7 @@ func TestQueueOverflow(t *testing.T) {
 			}
 			resp.Body.Close()
 			results <- resp.StatusCode
-		}(i)
+		}(i, uniqueTemp)
 	}
 
 	wg.Wait()

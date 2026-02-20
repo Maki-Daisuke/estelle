@@ -219,11 +219,23 @@ func handleGet(res http.ResponseWriter, req *http.Request) {
 		}
 		panic(err)
 	}
-	c := estelle.Enqueue(ti)
-	err = <-c
+	
+	taskRes, err := estelle.Enqueue(ti)
 	if err != nil {
+		if err == ErrEstelleQueueFull {
+			http.Error(res, "Task queue is full", http.StatusServiceUnavailable)
+			return
+		}
 		panic(err)
 	}
+	
+	if taskRes != nil {
+		<-taskRes.Done()
+		if err := taskRes.Err(); err != nil {
+			panic(err)
+		}
+	}
+	
 	res.WriteHeader(200)
 	res.Write([]byte(ti.Path()))
 }
@@ -238,23 +250,24 @@ func handleQueue(res http.ResponseWriter, req *http.Request) {
 		}
 		panic(err)
 	}
-	ok, c := estelle.TryEnqueue(ti)
-	if !ok {
-		http.Error(res, "Task queue is full", http.StatusServiceUnavailable)
+
+	if ti.Exists() {
+		res.WriteHeader(200)
+		res.Write([]byte(ti.Path()))
 		return
 	}
 
-	// Does not wait for the thumbnail to be created.
-	select {
-	case err := <-c:
-		if err != nil {
-			panic(err)
+	_, err = estelle.Enqueue(ti)
+	
+	if err != nil {
+		if err == ErrEstelleQueueFull {
+			http.Error(res, "Task queue is full", http.StatusServiceUnavailable)
+			return
 		}
-		res.WriteHeader(200)
-		res.Write([]byte(ti.Path()))
-	default:
-		res.WriteHeader(202) // Accepted
+		panic(err)
 	}
+
+	res.WriteHeader(202) // Accepted
 }
 
 func thumbInfoFromReq(req *http.Request) (ThumbInfo, error) {

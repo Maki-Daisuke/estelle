@@ -37,15 +37,13 @@ func TestEnqueueAfterShutdown(t *testing.T) {
 		t.Fatalf("Failed to shutdown Estelle: %v", err)
 	}
 
-	// Try to Enqueue after Shutdown
-	// This should return an error channel with ErrEstelleClosed
-	errChan := estl.Enqueue(ti)
-	select {
-	case err := <-errChan:
-		if err != ErrEstelleClosed {
-			t.Errorf("Expected ErrEstelleClosed, got %v", err)
-		}
-	case <-time.After(100 * time.Millisecond):
-		t.Errorf("Timeout waiting for error")
+	res, err := estl.Enqueue(ti)
+	if err == nil && res != nil {
+		<-res.Done()
+		err = res.Err()
+	}
+	
+	if err != ErrEstelleClosed {
+		t.Errorf("Expected ErrEstelleClosed, got %v", err)
 	}
 }
