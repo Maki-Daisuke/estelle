@@ -183,7 +183,7 @@ If the thumbnailing queue is full, it will return `503 Service Unavailable` imme
 * `format`
   * Image format of the output thumbnail
   * One of: `jpg`, `png`, `webp`
-  * Default: `jpg`
+  * Default: `webp`
 * `key`
   * Shared secret key.
   * **Required** if `ESTELLE_SECRET` environment variable is set.

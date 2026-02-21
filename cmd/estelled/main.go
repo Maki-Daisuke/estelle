@@ -339,7 +339,7 @@ func parseQueryFormat(query []string) Format {
 			return f
 		}
 	}
-	return FMT_JPG
+	return FMT_WEBP
 }
 
 type HTTPError struct {
