@@ -108,6 +108,7 @@ func (ti ThumbInfo) Exists() bool {
 	return true
 }
 
+// Make executes the generation of the thumbnail.
 func (ti ThumbInfo) Make() error {
 	// Make sure that sharding directories (cachedir/XX/XX/) exist.
 	dir := filepath.Dir(ti.path)

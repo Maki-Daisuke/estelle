@@ -5,15 +5,21 @@ import (
 	"strings"
 )
 
+// Format represents the image file format.
 type Format int
 
 const (
+	// FMT_UNKNOWN represents an unknown or unsupported image format.
 	FMT_UNKNOWN Format = iota
+	// FMT_JPG represents the JPEG image format.
 	FMT_JPG
+	// FMT_PNG represents the PNG image format.
 	FMT_PNG
+	// FMT_WEBP represents the WebP image format.
 	FMT_WEBP
 )
 
+// String returns the string representation of the format.
 func (f Format) String() string {
 	switch f {
 	case FMT_JPG:
@@ -26,6 +32,7 @@ func (f Format) String() string {
 	panic(fmt.Sprintf("Unknow format type: %d", f))
 }
 
+// MimeType returns the MIME type corresponding to the format.
 func (f Format) MimeType() string {
 	switch f {
 	case FMT_JPG:
@@ -38,6 +45,7 @@ func (f Format) MimeType() string {
 	panic(fmt.Sprintf("Unknow format type: %d", f))
 }
 
+// FormatFromString parses a string and returns the corresponding Format.
 func FormatFromString(s string) Format {
 	switch strings.ToUpper(s) {
 	case "JPG", "JPEG":

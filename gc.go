@@ -13,6 +13,7 @@ import (
 	"time"
 )
 
+// GarbageCollector manages the disk cache for thumbnails, evicting older files when the limit is exceeded.
 type GarbageCollector struct {
 	dir          string
 	limit        int64
@@ -26,6 +27,7 @@ type GarbageCollector struct {
 	shutdownOnce sync.Once
 }
 
+// NewGarbageCollector creates and starts a new GarbageCollector.
 func NewGarbageCollector(dir string, limit int64, highRatio, lowRatio float64) *GarbageCollector {
 	gc := &GarbageCollector{
 		dir:       dir,
@@ -42,6 +44,7 @@ func NewGarbageCollector(dir string, limit int64, highRatio, lowRatio float64) *
 	return gc
 }
 
+// Shutdown gracefully stops the garbage collector loop.
 func (gc *GarbageCollector) Shutdown(ctx context.Context) error {
 	gc.shutdownOnce.Do(func() {
 		close(gc.stopCh)
@@ -54,6 +57,7 @@ func (gc *GarbageCollector) Shutdown(ctx context.Context) error {
 	}
 }
 
+// Track adds delta to the tracked cache usage and triggers garbage collection if the high limit is reached.
 func (gc *GarbageCollector) Track(delta int64) {
 	atomic.AddInt64(&gc.used, delta)
 	select {

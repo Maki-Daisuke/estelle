@@ -12,7 +12,10 @@ import (
 	cmap "github.com/orcaman/concurrent-map/v2"
 )
 
+// ErrEstelleClosed is returned when the Estelle instance is already shut down.
 var ErrEstelleClosed = fmt.Errorf("estelle is already shutdown")
+
+// ErrEstelleQueueFull is returned when the internal task queue is full.
 var ErrEstelleQueueFull = fmt.Errorf("estelle queue is full")
 
 // Result represents the status of an enqueued task.
@@ -34,6 +37,7 @@ func (r *Result) Err() error {
 	return r.err
 }
 
+// Estelle is the main thumbnail generation engine that manages the queue, worker pool, and garbage collection.
 type Estelle struct {
 	dir          ThumbInfoFactory
 	runner       *filiq.Runner
@@ -50,14 +54,17 @@ type config struct {
 	panicHandler func(interface{})
 }
 
+// Option defines a functional option for configuring an Estelle instance.
 type Option func(*config)
 
+// WithCacheLimit sets the maximum cache size in bytes for the garbage collector.
 func WithCacheLimit(limit int64) Option {
 	return func(c *config) {
 		c.cacheLimit = limit
 	}
 }
 
+// WithGCRatio sets the high and low watermarks (ratios between 0.0 and 1.0) for cache garbage collection.
 func WithGCRatio(high, low float64) Option {
 	return func(c *config) {
 		c.gcHighRatio = high
@@ -65,24 +72,29 @@ func WithGCRatio(high, low float64) Option {
 	}
 }
 
+// WithWorkers sets the number of concurrent worker routines for thumbnail generation.
 func WithWorkers(n int) Option {
 	return func(c *config) {
 		c.workerNum = n
 	}
 }
 
+// WithBufferSize sets the size of the internal task queue. 0 means unbounded.
 func WithBufferSize(size int) Option {
 	return func(c *config) {
 		c.bufferSize = size
 	}
 }
 
+// WithPanicHandler sets a custom panic handler for the thumbnail generation workers.
 func WithPanicHandler(h func(interface{})) Option {
 	return func(c *config) {
 		c.panicHandler = h
 	}
 }
 
+// New creates a new Estelle instance.
+// It initializes the underlying directory structure, worker pool, and garbage collection.
 func New(path string, opts ...Option) (*Estelle, error) {
 	dir, err := NewThumbInfoFactory(path)
 	if err != nil {
@@ -121,6 +133,8 @@ func New(path string, opts ...Option) (*Estelle, error) {
 	return estl, nil
 }
 
+// Shutdown gracefully stops the thumbnail generation workers and the garbage collector.
+// It closes the channels of all pending tasks to unblock any waiting clients.
 func (estl *Estelle) Shutdown(ctx context.Context) error {
 	pending := estl.pendingTasks.Swap(nil)
 	if pending == nil {
@@ -148,6 +162,7 @@ func (estl *Estelle) Shutdown(ctx context.Context) error {
 	return ctx.Err()
 }
 
+// NewThumbInfo creates a ThumbInfo for a given source path, size, mode, and format.
 func (estl *Estelle) NewThumbInfo(path string, size Size, mode Mode, format Format) (ThumbInfo, error) {
 	return estl.dir.FromFile(path, size, mode, format)
 }
