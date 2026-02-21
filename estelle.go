@@ -230,8 +230,12 @@ func (estl *Estelle) Enqueue(ti ThumbInfo) (*Result, error) {
 func (estl *Estelle) makeTask(ti ThumbInfo, res *Result) func() {
 	return func() {
 		defer func() {
-			if err := recover(); err != nil {
-				res.err = err.(error)
+			if r := recover(); r != nil {
+				if e, ok := r.(error); ok {
+					res.err = e
+				} else {
+					res.err = fmt.Errorf("panic: %v", r)
+				}
 			}
 			close(res.done)
 			pending := estl.pendingTasks.Load()
@@ -245,10 +249,12 @@ func (estl *Estelle) makeTask(ti ThumbInfo, res *Result) func() {
 		}
 		if err := ti.make(); err != nil {
 			res.err = err
+			return
 		}
 		st, err := os.Stat(ti.Path())
 		if err != nil {
 			res.err = err
+			return
 		}
 		estl.gc.Track(st.Size())
 	}
