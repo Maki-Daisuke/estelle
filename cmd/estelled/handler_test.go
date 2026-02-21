@@ -206,3 +206,89 @@ Loop2:
 		t.Errorf("Expected different path after modification. Got same: %q", thumbPath1)
 	}
 }
+
+func TestThumbnailErrors(t *testing.T) {
+	// Setup temporary cache directory
+	tempCache, err := os.MkdirTemp("", "estelle-test-err")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tempCache)
+
+	var errInit error
+	estelle, errInit = New(tempCache,
+		WithWorkers(1),
+	)
+	if errInit != nil {
+		t.Fatal(errInit)
+	}
+	defer estelle.Shutdown(context.Background())
+
+	// Set allowedDirs global for testing
+	allowedDirs = []string{tempCache}
+
+	// Setup Router
+	router := http.NewServeMux()
+	router.HandleFunc("GET /get", handleGet)
+	router.HandleFunc("POST /get", handleGet)
+	// Use recovery middleware to catch the panic and return 500
+	handler := withRecovery(router)
+
+	ts := httptest.NewServer(handler)
+	defer ts.Close()
+
+	tests := []struct {
+		name       string
+		query      string
+		beforeFunc func() string // For dynamic file path setup
+		wantCode   int
+	}{
+		{
+			name:     "404 Not Found (Source does not exist)",
+			query:    "source=" + filepath.Join(tempCache, "non-existent.jpg"),
+			wantCode: http.StatusNotFound,
+		},
+		{
+			name:     "403 Forbidden (Outside allowed directories)",
+			query:    "source=" + filepath.Join(os.TempDir(), "outside.jpg"),
+			wantCode: http.StatusForbidden,
+		},
+		{
+			name:     "400 Bad Request (Source missing)",
+			query:    "",
+			wantCode: http.StatusBadRequest,
+		},
+		{
+			name:     "400 Bad Request (Relative path)",
+			query:    "source=./relative.jpg",
+			wantCode: http.StatusBadRequest,
+		},
+		{
+			name: "500 Internal Server Error (Invalid image file)",
+			beforeFunc: func() string {
+				f := filepath.Join(tempCache, "invalid.jpg")
+				os.WriteFile(f, []byte("not an image"), 0644)
+				return "source=" + f
+			},
+			wantCode: http.StatusInternalServerError,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			query := tt.query
+			if tt.beforeFunc != nil {
+				query = tt.beforeFunc()
+			}
+			resp, err := http.Get(ts.URL + "/get?" + query)
+			if err != nil {
+				t.Fatalf("%s: http request failed: %v", tt.name, err)
+			}
+			defer resp.Body.Close()
+
+			if resp.StatusCode != tt.wantCode {
+				t.Errorf("%s: expected status %d, got %d", tt.name, tt.wantCode, resp.StatusCode)
+			}
+		})
+	}
+}
