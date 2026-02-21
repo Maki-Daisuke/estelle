@@ -24,7 +24,7 @@ func TestThumbInfoFactory(t *testing.T) {
 	}
 }
 
-func TestThumbInfoMake(t *testing.T) {
+func TestThumbInfo_make(t *testing.T) {
 	const fileName = "tests/IMG_20141207_201549.jpg"
 	baseDir := "tests/cache"
 	factory, err := NewThumbInfoFactory(baseDir)
@@ -53,7 +53,7 @@ func TestThumbInfoMake(t *testing.T) {
 		t.Errorf("Unexpected path.\nExpected: %s\nActual: %s", expected, path)
 	}
 
-	err = thumbInfo.Make()
+	err = thumbInfo.make()
 	if err != nil {
 		t.Fatalf("Failed to make thumbnail: %v", err)
 	}

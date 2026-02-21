@@ -22,7 +22,7 @@ func TestLazyTouch(t *testing.T) {
 	}
 
 	// Create thumbnail
-	err = thumbInfo.Make()
+	err = thumbInfo.make()
 	if err != nil {
 		t.Fatalf("Failed to make thumbnail: %v", err)
 	}

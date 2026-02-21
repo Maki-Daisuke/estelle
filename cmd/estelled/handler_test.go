@@ -69,7 +69,7 @@ func TestCacheIntegration(t *testing.T) {
 	// 1. Request thumbnail creation
 	// Since /queue returns 202 immediately if not exists, we might need to query it.
 	// But the user wants verification that it IS created.
-	// Since 'Make' is async in the queue... we need to wait.
+	// Since 'make' is async in the queue... we need to wait.
 	// BUT, if we want to validte "same request doesn't create new"...
 	// Let's send the request.
 
@@ -167,7 +167,7 @@ Loop:
 		// If it was fast, maybe 200? But unlikely.
 		// Also, if logic is broken and ignores mtime, it might return 200 (old cache).
 		// But handleQueue creates ThumbInfo from file source.
-		// ThumbInfo uses Fingerprint. Fingerprint reads file stat.
+		// ThumbInfo uses fingerprint. fingerprint reads file stat.
 		// File stat has new mtime. So ID changes.
 		// So `estelle.Exists` check looks for NEW ID. Should be false.
 		// So it should Enqueue.

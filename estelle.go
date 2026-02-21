@@ -41,7 +41,7 @@ func (r *Result) Err() error {
 type Estelle struct {
 	dir          ThumbInfoFactory
 	runner       *filiq.Runner
-	gc           *GarbageCollector
+	gc           *garbageCollector
 	pendingTasks atomic.Pointer[cmap.ConcurrentMap[string, *Result]]
 }
 
@@ -126,7 +126,7 @@ func New(path string, opts ...Option) (*Estelle, error) {
 	estl := &Estelle{
 		dir:    dir,
 		runner: filiq.New(filiqOpts...),
-		gc:     NewGarbageCollector(dir.BaseDir(), cfg.cacheLimit, cfg.gcHighRatio, cfg.gcLowRatio),
+		gc:     newGarbageCollector(dir.BaseDir(), cfg.cacheLimit, cfg.gcHighRatio, cfg.gcLowRatio),
 	}
 	cm := cmap.New[*Result]()
 	estl.pendingTasks.Store(&cm)
@@ -243,7 +243,7 @@ func (estl *Estelle) makeTask(ti ThumbInfo, res *Result) func() {
 		if ti.Exists() {
 			return
 		}
-		if err := ti.Make(); err != nil {
+		if err := ti.make(); err != nil {
 			res.err = err
 		}
 		st, err := os.Stat(ti.Path())

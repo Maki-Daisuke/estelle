@@ -13,8 +13,8 @@ import (
 	"time"
 )
 
-// GarbageCollector manages the disk cache for thumbnails, evicting older files when the limit is exceeded.
-type GarbageCollector struct {
+// garbageCollector manages the disk cache for thumbnails, evicting older files when the limit is exceeded.
+type garbageCollector struct {
 	dir          string
 	limit        int64
 	highLimit    int64 // cache-limit * high-ratio
@@ -27,9 +27,9 @@ type GarbageCollector struct {
 	shutdownOnce sync.Once
 }
 
-// NewGarbageCollector creates and starts a new GarbageCollector.
-func NewGarbageCollector(dir string, limit int64, highRatio, lowRatio float64) *GarbageCollector {
-	gc := &GarbageCollector{
+// newGarbageCollector creates and starts a new garbageCollector.
+func newGarbageCollector(dir string, limit int64, highRatio, lowRatio float64) *garbageCollector {
+	gc := &garbageCollector{
 		dir:       dir,
 		limit:     limit,
 		highLimit: int64(float64(limit) * highRatio),
@@ -45,7 +45,7 @@ func NewGarbageCollector(dir string, limit int64, highRatio, lowRatio float64) *
 }
 
 // Shutdown gracefully stops the garbage collector loop.
-func (gc *GarbageCollector) Shutdown(ctx context.Context) error {
+func (gc *garbageCollector) Shutdown(ctx context.Context) error {
 	gc.shutdownOnce.Do(func() {
 		close(gc.stopCh)
 	})
@@ -58,7 +58,7 @@ func (gc *GarbageCollector) Shutdown(ctx context.Context) error {
 }
 
 // Track adds delta to the tracked cache usage and triggers garbage collection if the high limit is reached.
-func (gc *GarbageCollector) Track(delta int64) {
+func (gc *garbageCollector) Track(delta int64) {
 	atomic.AddInt64(&gc.used, delta)
 	select {
 	case gc.gcSignal <- struct{}{}:
@@ -67,7 +67,7 @@ func (gc *GarbageCollector) Track(delta int64) {
 	}
 }
 
-func (gc *GarbageCollector) run() {
+func (gc *garbageCollector) run() {
 	defer gc.wg.Done()
 	defer close(gc.stoppedCh)
 
@@ -84,7 +84,7 @@ func (gc *GarbageCollector) run() {
 	}
 }
 
-func (gc *GarbageCollector) initialScan() {
+func (gc *garbageCollector) initialScan() {
 	var total int64
 	filepath.WalkDir(gc.dir, func(path string, de fs.DirEntry, err error) error {
 		select { // Check if stopped
@@ -101,7 +101,7 @@ func (gc *GarbageCollector) initialScan() {
 	gc.Track(total) // This kicks the GC if needed
 }
 
-func (gc *GarbageCollector) runGC() {
+func (gc *garbageCollector) runGC() {
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 
 	for atomic.LoadInt64(&gc.used) > gc.lowLimit {
@@ -121,7 +121,7 @@ func (gc *GarbageCollector) runGC() {
 	}
 }
 
-func (gc *GarbageCollector) evictOneBatch(rng *rand.Rand) int64 {
+func (gc *garbageCollector) evictOneBatch(rng *rand.Rand) int64 {
 	// Random Sampling LRU
 	// 1. Pick a random subdirectory
 	// 2. Scan files in it

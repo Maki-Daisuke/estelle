@@ -10,25 +10,25 @@ import (
 // Hash represents a SHA-1 hash sum.
 type Hash [sha1.Size]byte
 
-// Fingerprint holds file metadata used to uniquely identify a source image state.
-type Fingerprint struct {
+// fingerprint holds file metadata used to uniquely identify a source image state.
+type fingerprint struct {
 	Path      string
 	Size      int64
 	MtimeSec  int64
 	MtimeNsec int64
 }
 
-// FingerprintFromFile generates a Fingerprint for the file at the given path.
-func FingerprintFromFile(path string) (Fingerprint, error) {
+// fingerprintFromFile generates a fingerprint for the file at the given path.
+func fingerprintFromFile(path string) (fingerprint, error) {
 	absPath, err := filepath.Abs(path)
 	if err != nil {
-		return Fingerprint{}, err
+		return fingerprint{}, err
 	}
 	fi, err := os.Stat(absPath)
 	if err != nil {
-		return Fingerprint{}, err
+		return fingerprint{}, err
 	}
-	return Fingerprint{
+	return fingerprint{
 		Path:      absPath,
 		Size:      fi.Size(),
 		MtimeSec:  fi.ModTime().Unix(),
@@ -36,8 +36,8 @@ func FingerprintFromFile(path string) (Fingerprint, error) {
 	}, nil
 }
 
-// Hash returns the SHA-1 hash of the Fingerprint to be used as a cache key.
-func (fp *Fingerprint) Hash() Hash {
+// Hash returns the SHA-1 hash of the fingerprint to be used as a cache key.
+func (fp *fingerprint) Hash() Hash {
 	// Serialize fingerprint by joining fields with null bytes, which are not allowed in file paths.
 	str := fmt.Sprintf("%s\x00%x\x00%x\x00%x", fp.Path, fp.Size, fp.MtimeSec, fp.MtimeNsec)
 	return sha1.Sum([]byte(str))

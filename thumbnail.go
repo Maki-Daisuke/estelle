@@ -11,7 +11,7 @@ import (
 
 // ThumbInfo holds the information about a thumbnail.
 type ThumbInfo struct {
-	id     string // ID of this thumbnail (Fingerprint-Size-Mode.Format)
+	id     string // ID of this thumbnail (fingerprint-Size-Mode.Format)
 	path   string // Absolute path to thumbnail file
 	source string // Absolute path to source file
 	size   Size   // Size of this thumbnail
@@ -62,7 +62,7 @@ func (dir ThumbInfoFactory) FromFile(path string, size Size, mode Mode, format F
 	if err != nil {
 		return ThumbInfo{}, err
 	}
-	fp, err := FingerprintFromFile(absPath)
+	fp, err := fingerprintFromFile(absPath)
 	if err != nil {
 		return ThumbInfo{}, err
 	}
@@ -108,8 +108,8 @@ func (ti ThumbInfo) Exists() bool {
 	return true
 }
 
-// Make executes the generation of the thumbnail.
-func (ti ThumbInfo) Make() error {
+// make executes the generation of the thumbnail.
+func (ti ThumbInfo) make() error {
 	// Make sure that sharding directories (cachedir/XX/XX/) exist.
 	dir := filepath.Dir(ti.path)
 	if err := os.MkdirAll(dir, 0755); err != nil {
@@ -118,7 +118,7 @@ func (ti ThumbInfo) Make() error {
 	// Generate the thumbnail using a temporary filename and rename it to the target name after completion.
 	// This prevents incomplete (corrupted) thumbnail files from being recognized as valid.
 	// We simply prepend "incomplete_" to the filename. This is sufficient to avoid conflicts
-	// because Estelle.Enqueue() uses singleflight to ensure only one generation process runs at a time.
+	// because Estelle.Enqueue() ensures only one generation process runs at a time for the same thumbnail.
 	tmpName := filepath.Join(dir, "incomplete_"+filepath.Base(ti.path))
 
 	params := ti.prepareVipsArgs(tmpName)
